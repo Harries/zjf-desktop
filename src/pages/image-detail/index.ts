@@ -1,0 +1,1 @@
+export { ImageDetailPage } from "./ImageDetailPage";

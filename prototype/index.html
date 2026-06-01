@@ -1,0 +1,1074 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>zjf.ai Desktop Pages Prototype</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --page: #f4f7fa;
+        --panel: #ffffff;
+        --ink: #172033;
+        --muted: #657286;
+        --line: #d8e0ea;
+        --soft: #eef4f7;
+        --brand: #007a99;
+        --brand-dark: #0a4050;
+        --green: #168457;
+        --amber: #b57616;
+        --red: #d33f3f;
+        --blue: #2f73bd;
+        --shadow: 0 18px 46px rgba(23, 32, 51, 0.12);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-width: 1180px;
+        background: var(--page);
+        color: var(--ink);
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", sans-serif;
+      }
+
+      button,
+      input,
+      select {
+        font: inherit;
+      }
+
+      .board {
+        max-width: 1320px;
+        margin: 0 auto;
+        padding: 32px 32px 56px;
+      }
+
+      .board-header {
+        display: flex;
+        justify-content: space-between;
+        gap: 24px;
+        margin-bottom: 28px;
+      }
+
+      .eyebrow {
+        margin: 0 0 8px;
+        color: var(--brand);
+        font-size: 13px;
+        font-weight: 800;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 30px;
+        line-height: 1.2;
+      }
+
+      .intro {
+        margin: 9px 0 0;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .toc {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 8px;
+        max-width: 440px;
+      }
+
+      .toc span {
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: #fff;
+        color: #3f4e63;
+        padding: 6px 10px;
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .page-grid {
+        display: grid;
+        gap: 28px;
+      }
+
+      .prototype-page {
+        overflow: hidden;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel);
+        box-shadow: var(--shadow);
+      }
+
+      .page-title {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: 44px;
+        padding: 0 16px 0 18px;
+        border-bottom: 1px solid var(--line);
+        background: #fbfcfe;
+        color: #526073;
+        font-size: 13px;
+        font-weight: 800;
+      }
+
+      .dots {
+        display: inline-flex;
+        gap: 7px;
+      }
+
+      .dots i {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #c6d0dc;
+      }
+
+      .app-shell {
+        display: grid;
+        grid-template-columns: 224px minmax(0, 1fr);
+        min-height: 640px;
+      }
+
+      .sidebar {
+        border-right: 1px solid var(--line);
+        background: #f8fafc;
+        padding: 22px 16px;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 24px;
+        font-weight: 850;
+      }
+
+      .mark {
+        display: grid;
+        place-items: center;
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        background: var(--brand);
+        color: #fff;
+      }
+
+      .nav-label {
+        margin: 24px 0 8px 10px;
+        color: #8995a7;
+        font-size: 11px;
+        font-weight: 850;
+      }
+
+      .nav-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        width: 100%;
+        height: 38px;
+        border: 0;
+        border-radius: 8px;
+        background: transparent;
+        color: #415067;
+        padding: 0 10px;
+        text-align: left;
+      }
+
+      .nav-item.active {
+        background: #e2f3f7;
+        color: #07556b;
+        font-weight: 850;
+      }
+
+      .token-card {
+        margin-top: 30px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fff;
+        padding: 12px;
+      }
+
+      .token-card strong {
+        display: block;
+        margin-bottom: 5px;
+        font-size: 13px;
+      }
+
+      .token-card span {
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.5;
+      }
+
+      .content {
+        min-width: 0;
+        padding: 22px;
+        background: #fff;
+      }
+
+      .toolbar {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 18px;
+      }
+
+      .search {
+        position: relative;
+        flex: 1;
+        min-width: 0;
+      }
+
+      .search span {
+        position: absolute;
+        top: 10px;
+        left: 12px;
+        color: var(--muted);
+      }
+
+      input,
+      select {
+        height: 38px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fff;
+        color: var(--ink);
+        padding: 0 12px;
+        outline: none;
+      }
+
+      .search input {
+        width: 100%;
+        padding-left: 36px;
+      }
+
+      .btn,
+      .icon-btn {
+        display: inline-flex;
+        flex: 0 0 auto;
+        align-items: center;
+        justify-content: center;
+        height: 38px;
+        border-radius: 8px;
+        font-weight: 760;
+      }
+
+      .btn {
+        gap: 8px;
+        min-width: 92px;
+        border: 1px solid var(--line);
+        background: #fff;
+        color: #344257;
+        padding: 0 13px;
+      }
+
+      .btn.primary {
+        min-width: 82px;
+        border-color: var(--brand);
+        background: var(--brand);
+        color: #fff;
+      }
+
+      .btn.danger {
+        color: var(--red);
+      }
+
+      .icon-btn {
+        width: 38px;
+        border: 1px solid var(--line);
+        background: #fff;
+        color: #46566c;
+      }
+
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
+        margin-bottom: 18px;
+      }
+
+      .stat,
+      .card,
+      .panel {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fff;
+      }
+
+      .stat {
+        padding: 13px;
+      }
+
+      .stat span {
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .stat strong {
+        display: block;
+        margin-top: 5px;
+        font-size: 22px;
+      }
+
+      .drop-zone {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 18px;
+        border: 1px dashed #a8bccb;
+        border-radius: 8px;
+        background: #f7fbfc;
+        padding: 15px 16px;
+      }
+
+      .drop-zone strong,
+      .card strong,
+      .panel strong {
+        display: block;
+        margin-bottom: 5px;
+        font-size: 14px;
+      }
+
+      .drop-zone span,
+      .card span,
+      .panel span {
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.5;
+      }
+
+      .gallery-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 12px;
+      }
+
+      .image-card {
+        overflow: hidden;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fff;
+      }
+
+      .thumb {
+        position: relative;
+        height: 134px;
+        background:
+          linear-gradient(135deg, rgba(255, 255, 255, 0.24), rgba(0, 0, 0, 0.06)),
+          var(--thumb);
+      }
+
+      .thumb::after {
+        position: absolute;
+        inset: 16px;
+        border: 1px solid rgba(255, 255, 255, 0.46);
+        border-radius: 6px;
+        content: "";
+      }
+
+      .image-body {
+        padding: 10px;
+      }
+
+      .file-name {
+        display: block;
+        overflow: hidden;
+        margin-bottom: 5px;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        font-size: 13px;
+        font-weight: 850;
+      }
+
+      .file-meta {
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .actions {
+        display: flex;
+        gap: 6px;
+        margin-top: 10px;
+      }
+
+      .mini {
+        display: grid;
+        place-items: center;
+        width: 29px;
+        height: 29px;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        background: #fff;
+        color: #4e5d72;
+      }
+
+      .setup-page {
+        display: grid;
+        grid-template-columns: 430px 1fr;
+        min-height: 640px;
+      }
+
+      .setup-hero {
+        background: var(--brand-dark);
+        color: #fff;
+        padding: 46px;
+      }
+
+      .setup-hero h2 {
+        margin: 18px 0 12px;
+        font-size: 34px;
+        line-height: 1.15;
+      }
+
+      .setup-hero p {
+        margin: 0;
+        color: #c1d8df;
+        line-height: 1.7;
+      }
+
+      .setup-list {
+        display: grid;
+        gap: 14px;
+        margin-top: 36px;
+        color: #e9f7fa;
+        font-weight: 760;
+      }
+
+      .setup-form {
+        display: grid;
+        align-content: center;
+        max-width: 560px;
+        padding: 54px;
+      }
+
+      .setup-form h2,
+      .section-heading {
+        margin: 0 0 8px;
+        font-size: 24px;
+      }
+
+      .desc {
+        margin: 0 0 22px;
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.6;
+      }
+
+      .label {
+        display: block;
+        margin-bottom: 8px;
+        color: #445268;
+        font-size: 13px;
+        font-weight: 850;
+      }
+
+      .token-line {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 12px;
+      }
+
+      .token-line input {
+        flex: 1;
+      }
+
+      .notice {
+        display: flex;
+        gap: 9px;
+        align-items: center;
+        border-radius: 8px;
+        padding: 11px 12px;
+        font-size: 13px;
+        font-weight: 760;
+      }
+
+      .notice.ok {
+        border: 1px solid #b6dfca;
+        background: #f0fbf5;
+        color: #176846;
+      }
+
+      .notice.error {
+        border: 1px solid #f0b8b8;
+        background: #fff5f5;
+        color: #a83232;
+      }
+
+      .split-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 320px;
+        gap: 20px;
+      }
+
+      .detail-preview {
+        height: 294px;
+        border-radius: 8px;
+        background:
+          linear-gradient(135deg, rgba(255, 255, 255, 0.22), rgba(0, 0, 0, 0.08)),
+          #669bd0;
+      }
+
+      .detail-title {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
+        margin: 18px 0;
+      }
+
+      .detail-title h2 {
+        margin: 0 0 6px;
+        font-size: 22px;
+      }
+
+      .detail-title p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .field-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 10px;
+        margin-bottom: 18px;
+      }
+
+      .field {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 12px;
+      }
+
+      .field span {
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .field strong {
+        display: block;
+        margin-top: 5px;
+        font-size: 14px;
+      }
+
+      .copy-box {
+        display: grid;
+        gap: 8px;
+      }
+
+      .copy-row {
+        display: grid;
+        grid-template-columns: 92px minmax(0, 1fr) 72px;
+        align-items: center;
+        gap: 10px;
+        height: 40px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 0 8px 0 12px;
+      }
+
+      .copy-row code {
+        overflow: hidden;
+        color: #506077;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+      }
+
+      .side-panel {
+        display: grid;
+        align-content: start;
+        gap: 12px;
+      }
+
+      .panel {
+        padding: 14px;
+      }
+
+      .queue-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 320px;
+        gap: 20px;
+      }
+
+      .queue-list {
+        display: grid;
+        gap: 12px;
+      }
+
+      .queue-item {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 13px;
+      }
+
+      .queue-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 10px;
+        font-size: 14px;
+        font-weight: 850;
+      }
+
+      .badge {
+        border-radius: 999px;
+        padding: 4px 9px;
+        font-size: 11px;
+        font-weight: 850;
+      }
+
+      .badge.ok {
+        background: #e7f8ef;
+        color: var(--green);
+      }
+
+      .badge.busy {
+        background: #ebf4ff;
+        color: var(--blue);
+      }
+
+      .badge.warn {
+        background: #fff4da;
+        color: var(--amber);
+      }
+
+      .progress {
+        height: 8px;
+        overflow: hidden;
+        border-radius: 999px;
+        background: var(--soft);
+      }
+
+      .progress i {
+        display: block;
+        height: 100%;
+        border-radius: inherit;
+        background: var(--brand);
+      }
+
+      .settings-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px;
+      }
+
+      .setting-card {
+        min-height: 152px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 16px;
+      }
+
+      .setting-card strong {
+        display: block;
+        margin-bottom: 7px;
+        font-size: 15px;
+      }
+
+      .setting-card span {
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.5;
+      }
+
+      .segmented {
+        display: flex;
+        overflow: hidden;
+        margin-top: 18px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+      }
+
+      .segmented button {
+        flex: 1;
+        height: 36px;
+        border: 0;
+        border-right: 1px solid var(--line);
+        background: #fff;
+        color: #4e5d72;
+      }
+
+      .segmented button:last-child {
+        border-right: 0;
+      }
+
+      .segmented .active {
+        background: #e2f3f7;
+        color: #07556b;
+        font-weight: 850;
+      }
+
+      .switch-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: 20px;
+      }
+
+      .switch {
+        position: relative;
+        width: 44px;
+        height: 24px;
+        border-radius: 999px;
+        background: var(--brand);
+      }
+
+      .switch::after {
+        position: absolute;
+        top: 3px;
+        right: 3px;
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: #fff;
+        content: "";
+      }
+
+      .modal-stage {
+        position: relative;
+        min-height: 640px;
+        background: #f7fafc;
+      }
+
+      .modal-stage .app-shell {
+        filter: saturate(0.85);
+        opacity: 0.38;
+      }
+
+      .modal {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 440px;
+        transform: translate(-50%, -50%);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fff;
+        box-shadow: var(--shadow);
+        padding: 22px;
+      }
+
+      .modal h2 {
+        margin: 0 0 8px;
+        font-size: 20px;
+      }
+
+      .modal p {
+        margin: 0 0 20px;
+        color: var(--muted);
+        line-height: 1.6;
+      }
+
+      .modal-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+      }
+
+      .empty-state {
+        display: grid;
+        place-items: center;
+        min-height: 500px;
+        border: 1px dashed #b8c8d6;
+        border-radius: 8px;
+        background: #f8fbfc;
+        text-align: center;
+        padding: 40px;
+      }
+
+      .empty-state h2 {
+        margin: 16px 0 8px;
+        font-size: 22px;
+      }
+
+      .empty-state p {
+        max-width: 430px;
+        margin: 0 0 20px;
+        color: var(--muted);
+        line-height: 1.6;
+      }
+
+      .empty-icon {
+        display: grid;
+        place-items: center;
+        width: 74px;
+        height: 74px;
+        border-radius: 8px;
+        background: #e2f3f7;
+        color: var(--brand);
+        font-size: 30px;
+        font-weight: 850;
+      }
+
+      @media (max-width: 1240px) {
+        body {
+          min-width: 980px;
+        }
+
+        .gallery-grid {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="board">
+      <header class="board-header">
+        <div>
+          <p class="eyebrow">zjf.ai Desktop / 全页面客户端原型</p>
+          <h1>每个页面完整展示，方便直接拆开发任务</h1>
+          <p class="intro">页面包括 Token 配置、图库首页、图片详情、上传队列、设置、删除确认和空状态。</p>
+        </div>
+        <div class="toc" aria-label="页面目录">
+          <span>01 Token 配置</span>
+          <span>02 图库首页</span>
+          <span>03 图片详情</span>
+          <span>04 上传队列</span>
+          <span>05 设置</span>
+          <span>06 删除确认</span>
+          <span>07 空状态</span>
+        </div>
+      </header>
+
+      <section class="page-grid">
+        <article class="prototype-page">
+          <div class="page-title"><span>01 / 首次启动：配置 Token</span><span class="dots"><i></i><i></i><i></i></span></div>
+          <div class="setup-page">
+            <section class="setup-hero">
+              <div class="brand"><span class="mark">Z</span><span>zjf.ai Desktop</span></div>
+              <h2>连接你的 zjf.ai 图床</h2>
+              <p>客户端只需要一个 API Token，就可以读取图片列表、上传新图片、复制外链和删除远端资源。</p>
+              <div class="setup-list">
+                <span>✓ Token 使用系统安全存储</span>
+                <span>✓ 保存前先发起真实 API 验证</span>
+                <span>✓ 日志和界面隐藏完整 Token</span>
+                <span>✓ 验证成功后自动进入图库</span>
+              </div>
+            </section>
+            <section class="setup-form">
+              <h2>输入 API Token</h2>
+              <p class="desc">从 zjf.ai 控制台复制 Token，桌面端会用它完成后续图片管理请求。</p>
+              <label class="label" for="token">API Token</label>
+              <div class="token-line">
+                <input id="token" value="zjf_sk_••••••••••••••••••8Q2K" />
+                <button class="btn primary">验证</button>
+              </div>
+              <p class="desc">验证失败时停留在当前页，并显示 Token 无效、网络异常或权限不足等原因。</p>
+              <div class="notice ok">✓ Token 有效，已成功读取图片列表</div>
+            </section>
+          </div>
+        </article>
+
+        <article class="prototype-page">
+          <div class="page-title"><span>02 / 图库首页：浏览、搜索、上传入口</span><span class="dots"><i></i><i></i><i></i></span></div>
+          <div class="app-shell">
+            <aside class="sidebar">
+              <div class="brand"><span class="mark">Z</span><span>zjf.ai</span></div>
+              <p class="nav-label">管理</p>
+              <button class="nav-item active">□ 图库</button>
+              <button class="nav-item">↑ 上传队列</button>
+              <button class="nav-item">⌘ 快捷操作</button>
+              <p class="nav-label">筛选</p>
+              <button class="nav-item">● 全部图片</button>
+              <button class="nav-item">◇ 公开图片</button>
+              <button class="nav-item">◆ 私有图片</button>
+              <div class="token-card"><strong>Token 已连接</strong><span>zjf_••••••••••8Q2K<br />上次同步：刚刚</span></div>
+            </aside>
+            <section class="content">
+              <div class="toolbar">
+                <div class="search"><span>⌕</span><input value="banner" aria-label="搜索图片" /></div>
+                <button class="icon-btn" title="刷新">↻</button>
+                <button class="btn">⌘ 粘贴上传</button>
+                <button class="btn primary">↑ 上传</button>
+              </div>
+              <div class="drop-zone">
+                <div><strong>拖拽图片到这里上传</strong><span>支持 PNG、JPG、WebP、GIF；上传成功后可自动复制 Markdown。</span></div>
+                <button class="btn">选择文件</button>
+              </div>
+              <div class="stats">
+                <div class="stat"><span>图片总数</span><strong>248</strong></div>
+                <div class="stat"><span>本月上传</span><strong>36</strong></div>
+                <div class="stat"><span>已选图片</span><strong>1</strong></div>
+                <div class="stat"><span>队列任务</span><strong>3</strong></div>
+              </div>
+              <div class="gallery-grid">
+                <div class="image-card"><div class="thumb" style="--thumb: #669bd0"></div><div class="image-body"><span class="file-name">home-banner-webp.png</span><span class="file-meta">1920×1080 · 340 KB</span><div class="actions"><span class="mini">⧉</span><span class="mini">↗</span><span class="mini">⋯</span></div></div></div>
+                <div class="image-card"><div class="thumb" style="--thumb: #67aa80"></div><div class="image-body"><span class="file-name">docs-upload-flow.jpg</span><span class="file-meta">1440×900 · 412 KB</span><div class="actions"><span class="mini">⧉</span><span class="mini">↗</span><span class="mini">⋯</span></div></div></div>
+                <div class="image-card"><div class="thumb" style="--thumb: #ce945d"></div><div class="image-body"><span class="file-name">release-cover.png</span><span class="file-meta">1600×900 · 528 KB</span><div class="actions"><span class="mini">⧉</span><span class="mini">↗</span><span class="mini">⋯</span></div></div></div>
+                <div class="image-card"><div class="thumb" style="--thumb: #8178c7"></div><div class="image-body"><span class="file-name">avatar-set.webp</span><span class="file-meta">800×800 · 96 KB</span><div class="actions"><span class="mini">⧉</span><span class="mini">↗</span><span class="mini">⋯</span></div></div></div>
+                <div class="image-card"><div class="thumb" style="--thumb: #4b9b9c"></div><div class="image-body"><span class="file-name">article-diagram.svg</span><span class="file-meta">1200×720 · 44 KB</span><div class="actions"><span class="mini">⧉</span><span class="mini">↗</span><span class="mini">⋯</span></div></div></div>
+                <div class="image-card"><div class="thumb" style="--thumb: #c36674"></div><div class="image-body"><span class="file-name">product-shot.png</span><span class="file-meta">2400×1600 · 1.2 MB</span><div class="actions"><span class="mini">⧉</span><span class="mini">↗</span><span class="mini">⋯</span></div></div></div>
+                <div class="image-card"><div class="thumb" style="--thumb: #507c68"></div><div class="image-body"><span class="file-name">private-note.png</span><span class="file-meta">1200×800 · 284 KB</span><div class="actions"><span class="mini">⧉</span><span class="mini">↗</span><span class="mini">⋯</span></div></div></div>
+                <div class="image-card"><div class="thumb" style="--thumb: #a86b8c"></div><div class="image-body"><span class="file-name">landing-card.jpg</span><span class="file-meta">1800×1200 · 734 KB</span><div class="actions"><span class="mini">⧉</span><span class="mini">↗</span><span class="mini">⋯</span></div></div></div>
+              </div>
+            </section>
+          </div>
+        </article>
+
+        <article class="prototype-page">
+          <div class="page-title"><span>03 / 图片详情：预览、复制链接、删除入口</span><span class="dots"><i></i><i></i><i></i></span></div>
+          <div class="app-shell">
+            <aside class="sidebar">
+              <div class="brand"><span class="mark">Z</span><span>zjf.ai</span></div>
+              <p class="nav-label">管理</p>
+              <button class="nav-item active">□ 图库</button>
+              <button class="nav-item">↑ 上传队列</button>
+              <button class="nav-item">⌘ 快捷操作</button>
+              <p class="nav-label">筛选</p>
+              <button class="nav-item">● 全部图片</button>
+              <button class="nav-item">◇ 公开图片</button>
+              <button class="nav-item">◆ 私有图片</button>
+            </aside>
+            <section class="content">
+              <div class="toolbar">
+                <button class="btn">← 返回图库</button>
+                <div class="search"><span>⌕</span><input value="home-banner-webp.png" /></div>
+                <button class="btn primary">复制 Markdown</button>
+              </div>
+              <div class="split-layout">
+                <section>
+                  <div class="detail-preview"></div>
+                  <div class="detail-title">
+                    <div>
+                      <h2>home-banner-webp.png</h2>
+                      <p>用于官网首页首屏的公开图片，上传成功后可直接复制外链。</p>
+                    </div>
+                    <button class="btn">↗ 打开</button>
+                  </div>
+                  <div class="field-grid">
+                    <div class="field"><span>格式</span><strong>PNG</strong></div>
+                    <div class="field"><span>尺寸</span><strong>1920×1080</strong></div>
+                    <div class="field"><span>大小</span><strong>340 KB</strong></div>
+                    <div class="field"><span>上传时间</span><strong>今天 15:32</strong></div>
+                  </div>
+                  <div class="copy-box">
+                    <div class="copy-row"><strong>URL</strong><code>https://zjf.ai/image/home-banner-webp.png</code><button class="btn">复制</button></div>
+                    <div class="copy-row"><strong>Markdown</strong><code>![home-banner](https://zjf.ai/image/home-banner-webp.png)</code><button class="btn">复制</button></div>
+                    <div class="copy-row"><strong>HTML</strong><code>&lt;img src="https://zjf.ai/image/home-banner-webp.png" alt="" /&gt;</code><button class="btn">复制</button></div>
+                  </div>
+                </section>
+                <aside class="side-panel">
+                  <div class="panel"><strong>可见性</strong><span>公开图片，可以通过外链访问。</span></div>
+                  <div class="panel"><strong>上传来源</strong><span>桌面端拖拽上传<br />批次：2026-06-01 15:32</span></div>
+                  <div class="panel"><strong>快捷操作</strong><div style="display: grid; gap: 8px; margin-top: 12px"><button class="btn">复制 URL</button><button class="btn">复制 Markdown</button><button class="btn danger">删除图片</button></div></div>
+                </aside>
+              </div>
+            </section>
+          </div>
+        </article>
+
+        <article class="prototype-page">
+          <div class="page-title"><span>04 / 上传队列：批量状态、失败重试、上传后动作</span><span class="dots"><i></i><i></i><i></i></span></div>
+          <div class="app-shell">
+            <aside class="sidebar">
+              <div class="brand"><span class="mark">Z</span><span>zjf.ai</span></div>
+              <p class="nav-label">管理</p>
+              <button class="nav-item">□ 图库</button>
+              <button class="nav-item active">↑ 上传队列</button>
+              <button class="nav-item">⌘ 快捷操作</button>
+              <div class="token-card"><strong>队列概览</strong><span>3 个任务进行中<br />1 个任务需要重试</span></div>
+            </aside>
+            <section class="content">
+              <div class="toolbar">
+                <h2 class="section-heading" style="flex: 1">上传队列</h2>
+                <button class="btn">清除完成项</button>
+                <button class="btn primary">继续上传</button>
+              </div>
+              <div class="queue-layout">
+                <section class="queue-list">
+                  <div class="queue-item"><div class="queue-top"><span>cover-2026.png</span><span class="badge ok">完成</span></div><div class="progress"><i style="width: 100%"></i></div><p class="desc" style="margin: 10px 0 0">已复制 Markdown 链接，并插入图库顶部。</p></div>
+                  <div class="queue-item"><div class="queue-top"><span>workflow.jpg</span><span class="badge busy">上传中</span></div><div class="progress"><i style="width: 68%"></i></div><p class="desc" style="margin: 10px 0 0">正在上传到 zjf.ai，完成后自动同步远端列表。</p></div>
+                  <div class="queue-item"><div class="queue-top"><span>large-export.tiff</span><span class="badge warn">待重试</span></div><div class="progress"><i style="width: 22%; background: var(--amber)"></i></div><p class="desc" style="margin: 10px 0 0">文件格式暂不支持，建议转换为 PNG、JPG 或 WebP。</p></div>
+                  <div class="queue-item"><div class="queue-top"><span>avatar-set.webp</span><span class="badge ok">完成</span></div><div class="progress"><i style="width: 100%"></i></div></div>
+                </section>
+                <aside class="side-panel">
+                  <div class="panel"><strong>上传后动作</strong><span>成功后复制 Markdown，并把新图片插入图库顶部。</span><div class="segmented"><button>URL</button><button class="active">MD</button><button>HTML</button></div></div>
+                  <div class="panel"><strong>失败处理</strong><span>失败任务保留在队列中，可单独重试或移除。</span><div style="display: grid; gap: 8px; margin-top: 12px"><button class="btn">重试失败项</button><button class="btn">移除失败项</button></div></div>
+                </aside>
+              </div>
+            </section>
+          </div>
+        </article>
+
+        <article class="prototype-page">
+          <div class="page-title"><span>05 / 设置：Token、复制格式、缓存、安全</span><span class="dots"><i></i><i></i><i></i></span></div>
+          <div class="app-shell">
+            <aside class="sidebar">
+              <div class="brand"><span class="mark">Z</span><span>zjf.ai</span></div>
+              <p class="nav-label">管理</p>
+              <button class="nav-item">□ 图库</button>
+              <button class="nav-item">↑ 上传队列</button>
+              <button class="nav-item active">⌘ 设置</button>
+              <div class="token-card"><strong>版本</strong><span>zjf.ai Desktop 0.1.0<br />MVP 原型</span></div>
+            </aside>
+            <section class="content">
+              <h2 class="section-heading">设置</h2>
+              <p class="desc">控制 Token、默认复制格式、上传后的自动动作和本地缓存。</p>
+              <div class="settings-grid">
+                <div class="setting-card"><strong>默认复制格式</strong><span>影响上传成功和图库复制按钮。</span><div class="segmented"><button>URL</button><button class="active">Markdown</button><button>HTML</button></div></div>
+                <div class="setting-card"><strong>自动复制链接</strong><span>上传成功后立即写入剪贴板。</span><div class="switch-row"><span>已开启</span><i class="switch"></i></div></div>
+                <div class="setting-card"><strong>Token 管理</strong><span>当前 Token：zjf_••••••••••8Q2K</span><div style="display: flex; gap: 8px; margin-top: 18px"><button class="btn">更换 Token</button><button class="btn danger">清除 Token</button></div></div>
+                <div class="setting-card"><strong>缩略图缓存</strong><span>本地缓存 128 MB，用于提升图库打开速度。</span><div style="display: flex; gap: 8px; margin-top: 18px"><button class="btn">清理缓存</button></div></div>
+                <div class="setting-card"><strong>上传限制提示</strong><span>超过限制或格式不支持时，在队列中显示可操作错误。</span><div class="switch-row"><span>已开启</span><i class="switch"></i></div></div>
+                <div class="setting-card"><strong>安全日志</strong><span>日志隐藏完整 Token 和 Authorization 请求头。</span><div class="notice ok" style="margin-top: 16px">✓ 已启用敏感信息脱敏</div></div>
+              </div>
+            </section>
+          </div>
+        </article>
+
+        <article class="prototype-page">
+          <div class="page-title"><span>06 / 删除确认：危险操作二次确认</span><span class="dots"><i></i><i></i><i></i></span></div>
+          <div class="modal-stage">
+            <div class="app-shell">
+              <aside class="sidebar"><div class="brand"><span class="mark">Z</span><span>zjf.ai</span></div><p class="nav-label">管理</p><button class="nav-item active">□ 图库</button><button class="nav-item">↑ 上传队列</button><button class="nav-item">⌘ 设置</button></aside>
+              <section class="content"><div class="gallery-grid"><div class="image-card"><div class="thumb" style="--thumb:#669bd0"></div><div class="image-body"><span class="file-name">home-banner-webp.png</span><span class="file-meta">1920×1080 · 340 KB</span></div></div><div class="image-card"><div class="thumb" style="--thumb:#67aa80"></div><div class="image-body"><span class="file-name">docs-upload-flow.jpg</span><span class="file-meta">1440×900 · 412 KB</span></div></div></div></section>
+            </div>
+            <div class="modal">
+              <h2>删除这张图片？</h2>
+              <p>删除后图片会从 zjf.ai 远端移除，已经发布出去的外链也可能失效。此操作不能在桌面端撤销。</p>
+              <div class="notice error" style="margin-bottom: 18px">将删除：home-banner-webp.png</div>
+              <div class="modal-actions"><button class="btn">取消</button><button class="btn danger">确认删除</button></div>
+            </div>
+          </div>
+        </article>
+
+        <article class="prototype-page">
+          <div class="page-title"><span>07 / 空状态与错误状态：新用户、Token 失效、网络失败</span><span class="dots"><i></i><i></i><i></i></span></div>
+          <div class="app-shell">
+            <aside class="sidebar">
+              <div class="brand"><span class="mark">Z</span><span>zjf.ai</span></div>
+              <p class="nav-label">管理</p>
+              <button class="nav-item active">□ 图库</button>
+              <button class="nav-item">↑ 上传队列</button>
+              <button class="nav-item">⌘ 设置</button>
+            </aside>
+            <section class="content">
+              <div class="toolbar">
+                <div class="search"><span>⌕</span><input placeholder="搜索图片" /></div>
+                <button class="icon-btn">↻</button>
+                <button class="btn primary">↑ 上传</button>
+              </div>
+              <div class="empty-state">
+                <div>
+                  <div class="empty-icon">Z</div>
+                  <h2>还没有图片</h2>
+                  <p>拖拽图片到窗口、粘贴剪贴板图片，或点击上传按钮开始使用 zjf.ai Desktop。</p>
+                  <div style="display: flex; justify-content: center; gap: 10px"><button class="btn primary">上传图片</button><button class="btn">粘贴上传</button></div>
+                  <div class="notice error" style="margin-top: 22px">Token 已失效或网络请求失败时，在这里展示可重试错误。</div>
+                </div>
+              </div>
+            </section>
+          </div>
+        </article>
+      </section>
+    </main>
+  </body>
+</html>
