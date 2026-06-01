@@ -76,21 +76,25 @@ cargo test --manifest-path src-tauri/Cargo.toml
 pnpm tauri build
 ```
 
-按平台构建安装包：
+按平台和架构构建安装包：
 
 ```bash
-# macOS
-pnpm tauri build --bundles dmg
+# macOS x64
+pnpm tauri build --target x86_64-apple-darwin --bundles dmg
 
-# Windows
-pnpm tauri build --bundles nsis
+# macOS arm64
+pnpm tauri build --target aarch64-apple-darwin --bundles dmg
+
+# Windows x64
+pnpm tauri build --target x86_64-pc-windows-msvc --bundles nsis,msi
 ```
 
 产物位置：
 
-- macOS DMG：`src-tauri/target/release/bundle/dmg/*.dmg`
-- macOS App：`src-tauri/target/release/bundle/macos/zjf.ai Desktop.app`
-- Windows 安装包：`src-tauri/target/release/bundle/nsis/*.exe`
+- macOS x64 DMG：`src-tauri/target/x86_64-apple-darwin/release/bundle/dmg/*.dmg`
+- macOS arm64 DMG：`src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg`
+- Windows x64 EXE：`src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe`
+- Windows x64 MSI：`src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi/*.msi`
 
 ## GitHub Actions 发布
 
@@ -101,11 +105,13 @@ git tag -a v1.0.0 -m "Release v1.0.0"
 git push origin v1.0.0
 ```
 
-触发后会：
+触发后会生成：
 
 - 运行前端和 Rust 检查。
-- 在 macOS runner 构建 DMG。
-- 在 Windows runner 构建 NSIS 安装包。
+- `zjf.ai.Desktop_<version>_arm64.dmg`
+- `zjf.ai.Desktop_<version>_x64.dmg`
+- `zjf.ai.Desktop_<version>_x64-setup.exe`
+- `zjf.ai.Desktop_<version>_x64_en-US.msi`
 - 将安装包上传到对应 tag 的 GitHub Release。
 
 ## API

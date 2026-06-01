@@ -5,8 +5,9 @@
 - Node.js 22。
 - pnpm 9。
 - Rust stable toolchain。
-- macOS 构建 DMG 需要在 macOS 上执行。
-- Windows 构建 NSIS 安装包需要在 Windows 上执行。
+- macOS x64 DMG 需要在 Intel macOS runner 或本机上执行。
+- macOS arm64 DMG 需要在 Apple Silicon macOS runner 或本机上执行。
+- Windows x64 EXE / MSI 安装包需要在 Windows runner 或本机上执行。
 
 构建命令：
 
@@ -16,14 +17,17 @@ pnpm install
 pnpm tauri build
 ```
 
-按平台构建安装包：
+按平台和架构构建安装包：
 
 ```bash
-# macOS
-pnpm tauri build --bundles dmg
+# macOS x64
+pnpm tauri build --target x86_64-apple-darwin --bundles dmg
 
-# Windows
-pnpm tauri build --bundles nsis
+# macOS arm64
+pnpm tauri build --target aarch64-apple-darwin --bundles dmg
+
+# Windows x64
+pnpm tauri build --target x86_64-pc-windows-msvc --bundles nsis,msi
 ```
 
 如果依赖下载失败：
@@ -38,9 +42,10 @@ pnpm tauri build
 
 输出位置：
 
-- `.app`：`src-tauri/target/release/bundle/macos/zjf.ai Desktop.app`
-- `.dmg`：`src-tauri/target/release/bundle/dmg/*.dmg`
-- Windows 安装包：`src-tauri/target/release/bundle/nsis/*.exe`
+- macOS x64 DMG：`src-tauri/target/x86_64-apple-darwin/release/bundle/dmg/*.dmg`
+- macOS arm64 DMG：`src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg`
+- Windows x64 EXE：`src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe`
+- Windows x64 MSI：`src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi/*.msi`
 
 安装与运行：
 
@@ -59,6 +64,7 @@ pnpm tauri build
 GitHub Actions：
 
 - 仅在推送 tag 时触发。
-- macOS runner 执行 `pnpm tauri build --bundles dmg`。
-- Windows runner 执行 `pnpm tauri build --bundles nsis`。
+- macOS x64 runner 执行 `pnpm tauri build --target x86_64-apple-darwin --bundles dmg`。
+- macOS arm64 runner 执行 `pnpm tauri build --target aarch64-apple-darwin --bundles dmg`。
+- Windows x64 runner 执行 `pnpm tauri build --target x86_64-pc-windows-msvc --bundles nsis,msi`。
 - 产物会上传到同名 GitHub Release。
