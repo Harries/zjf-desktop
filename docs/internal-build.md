@@ -6,6 +6,7 @@
 - pnpm 9。
 - Rust stable toolchain。
 - macOS 构建 DMG 需要在 macOS 上执行。
+- Windows 构建 NSIS 安装包需要在 Windows 上执行。
 
 构建命令：
 
@@ -13,6 +14,16 @@
 export PATH=/Users/liuhaihua/.nvm/versions/node/v22.12.0/bin:$PATH
 pnpm install
 pnpm tauri build
+```
+
+按平台构建安装包：
+
+```bash
+# macOS
+pnpm tauri build --bundles dmg
+
+# Windows
+pnpm tauri build --bundles nsis
 ```
 
 如果依赖下载失败：
@@ -28,6 +39,8 @@ pnpm tauri build
 输出位置：
 
 - `.app`：`src-tauri/target/release/bundle/macos/zjf.ai Desktop.app`
+- `.dmg`：`src-tauri/target/release/bundle/dmg/*.dmg`
+- Windows 安装包：`src-tauri/target/release/bundle/nsis/*.exe`
 
 安装与运行：
 
@@ -43,6 +56,9 @@ pnpm tauri build
 - Bundle 目标：`app`
 - 图标源：`src-tauri/icons/icon-source.png`
 
-备注：
+GitHub Actions：
 
-- 当前环境中 Tauri 的 DMG 脚本在最后打包阶段失败，但 `.app` 已成功产出；内测交付先使用 `.app`。
+- 仅在推送 tag 时触发。
+- macOS runner 执行 `pnpm tauri build --bundles dmg`。
+- Windows runner 执行 `pnpm tauri build --bundles nsis`。
+- 产物会上传到同名 GitHub Release。
