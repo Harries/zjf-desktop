@@ -77,17 +77,20 @@ function drawWatermark(
   context.save();
   context.font = `600 ${fontSize}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
   context.textBaseline = "bottom";
+  context.textAlign = "right";
+  context.lineJoin = "round";
+  context.shadowColor = "rgba(0, 0, 0, 0.28)";
+  context.shadowBlur = Math.max(2, Math.round(fontSize * 0.16));
+  context.shadowOffsetY = Math.max(1, Math.round(fontSize * 0.05));
 
-  const metrics = context.measureText(watermarkText);
-  const badgeWidth = Math.ceil(metrics.width + padding * 1.5);
-  const badgeHeight = Math.ceil(fontSize + padding);
-  const x = canvas.width - badgeWidth - padding;
-  const y = canvas.height - badgeHeight - padding;
+  const x = canvas.width - padding;
+  const y = canvas.height - padding;
 
-  context.fillStyle = "rgba(0, 0, 0, 0.42)";
-  context.fillRect(Math.max(0, x), Math.max(0, y), badgeWidth, badgeHeight);
-  context.fillStyle = "rgba(255, 255, 255, 0.92)";
-  context.fillText(watermarkText, Math.max(0, x + padding * 0.75), Math.max(fontSize, y + badgeHeight - padding * 0.45));
+  context.strokeStyle = "rgba(0, 0, 0, 0.18)";
+  context.lineWidth = Math.max(1, Math.round(fontSize * 0.08));
+  context.strokeText(watermarkText, x, y);
+  context.fillStyle = "rgba(255, 255, 255, 0.56)";
+  context.fillText(watermarkText, x, y);
   context.restore();
 }
 

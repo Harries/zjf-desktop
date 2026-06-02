@@ -172,15 +172,18 @@ export function GalleryPage() {
   }, [refetchUploadSettings]);
 
   const settingsForCurrentUpload = useCallback(
-    (settings?: AccountUploadSettings) =>
-      forcePrivateUpload
-        ? {
-            ...settings,
-            defaultVisibility: "private" as const,
-            defaultCompress: settings?.defaultCompress ?? false,
-            defaultWatermark: settings?.defaultWatermark ?? false,
-          }
-        : settings,
+    (settings?: AccountUploadSettings) => {
+      if (forcePrivateUpload) {
+        return {
+          ...settings,
+          defaultVisibility: "private" as const,
+          defaultCompress: settings?.defaultCompress ?? false,
+          defaultWatermark: settings?.defaultWatermark ?? false,
+        };
+      }
+
+      return settings ? { ...settings, defaultVisibility: undefined } : undefined;
+    },
     [forcePrivateUpload],
   );
 

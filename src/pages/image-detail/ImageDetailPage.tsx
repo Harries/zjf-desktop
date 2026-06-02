@@ -255,8 +255,18 @@ export function ImageDetailPage({ imageId }: ImageDetailPageProps) {
             <strong>{formatDate(image.createdAt)}</strong>
           </div>
           <div className="detail-meta">
-            <span>访问权限</span>
-            <strong>{image.visibility === "private" ? "私有" : image.visibility === "public" ? "公开" : "未知"}</strong>
+            <span>图片类型</span>
+            <strong>
+              {image.visibility === "private"
+                ? "私有图片"
+                : image.visibility === "public"
+                  ? "公开图片"
+                  : "未知类型"}
+            </strong>
+          </div>
+          <div className="detail-meta">
+            <span>所属相册</span>
+            <strong>{image.albumName ?? image.albumId ?? "默认相册"}</strong>
           </div>
 
           <div className="copy-list" aria-label="复制图片链接">

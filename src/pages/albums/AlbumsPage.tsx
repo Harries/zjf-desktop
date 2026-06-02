@@ -170,7 +170,13 @@ export function AlbumsPage() {
   const handleDeleteAlbum = () => {
     if (!selectedAlbum || selectedAlbum.isDefault) return;
 
-    const confirmed = window.confirm(`确定删除相册“${selectedAlbum.name}”？只有空相册可以删除。`);
+    const knownImageCount = selectedAlbum.imageCount ?? imagePage?.total ?? images.length;
+    if (knownImageCount > 0) {
+      setMessage("不能删除有图片的相册，请先清空相册内图片。");
+      return;
+    }
+
+    const confirmed = window.confirm(`确定删除空相册“${selectedAlbum.name}”？`);
     if (confirmed) deleteMutation.mutate(selectedAlbum.id);
   };
 
@@ -296,13 +302,20 @@ export function AlbumsPage() {
                 </button>
                 <button
                   className="danger-button"
-                  disabled={selectedAlbum.isDefault || deleteMutation.isPending}
+                  disabled={
+                    selectedAlbum.isDefault ||
+                    deleteMutation.isPending ||
+                    (selectedAlbum.imageCount ?? imagePage?.total ?? images.length) > 0
+                  }
                   onClick={handleDeleteAlbum}
                   type="button"
                 >
                   删除
                 </button>
               </div>
+              {(selectedAlbum.imageCount ?? imagePage?.total ?? images.length) > 0 ? (
+                <p className="form-hint">该相册内还有图片，不能删除。请先清空相册后再删除。</p>
+              ) : null}
 
               {isImagesError ? (
                 <ErrorState
