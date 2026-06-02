@@ -14,7 +14,8 @@ import { filterImages } from "../../utils/filter-images";
 import { toUserErrorMessage } from "../../utils/user-error";
 
 const galleryPageSize = 20;
-const supportedImageExtensions = ["png", "jpg", "jpeg", "gif", "webp", "bmp", "svg", "avif"];
+const supportedImageExtensions = ["png", "jpg", "jpeg", "gif", "webp"];
+const supportedImageMimeTypes = ["image/png", "image/jpeg", "image/gif", "image/webp"];
 
 function formatBytes(bytes?: number) {
   if (!bytes || bytes <= 0) return "未知大小";
@@ -159,7 +160,7 @@ export function GalleryPage() {
       const validPaths = paths.filter(isSupportedImagePath);
       const skippedCount = paths.length - validPaths.length;
       if (validPaths.length === 0) {
-        setUploadNotice("请选择 PNG、JPG、GIF、WebP、BMP、SVG 或 AVIF 图片。");
+        setUploadNotice("请选择 PNG、JPG、JPEG、WebP 或 GIF 图片。");
         return;
       }
 
@@ -186,10 +187,10 @@ export function GalleryPage() {
 
   const uploadPastedBlobs = useCallback(
     async (blobs: Blob[], showEmptyNotice: boolean) => {
-      const imageBlobs = blobs.filter((blob) => blob.type.startsWith("image/"));
+      const imageBlobs = blobs.filter((blob) => supportedImageMimeTypes.includes(blob.type));
 
       if (imageBlobs.length === 0) {
-        if (showEmptyNotice) setUploadNotice("剪贴板里没有可上传的图片。");
+        if (showEmptyNotice) setUploadNotice("剪贴板里没有可上传的 PNG、JPG、WebP 或 GIF 图片。");
         return;
       }
 

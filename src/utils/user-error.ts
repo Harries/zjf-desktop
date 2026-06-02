@@ -35,7 +35,7 @@ const fallbackByCode: Record<AppErrorCode, Omit<UserError, "code">> = {
   },
   UNSUPPORTED_FILE_TYPE: {
     title: "文件类型不支持",
-    message: "请选择 PNG、JPG、GIF、WebP、BMP、SVG 或 AVIF 图片。",
+    message: "请选择 PNG、JPG、JPEG、WebP 或 GIF 图片。",
     retryable: false,
   },
   API_ERROR: {

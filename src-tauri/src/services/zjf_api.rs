@@ -94,7 +94,11 @@ impl ZjfApiClient {
             .unwrap_or_else(|| "image".to_string());
         let bytes = fs::read(&file.path)
             .map_err(|err| AppError::api(format!("无法读取上传文件：{err}"), false))?;
-        let part = multipart::Part::bytes(bytes).file_name(file_name);
+        let mime_type = upload_mime_type(&file_name)?;
+        let part = multipart::Part::bytes(bytes)
+            .file_name(file_name)
+            .mime_str(mime_type)
+            .map_err(|err| AppError::api(format!("无法识别上传文件类型：{err}"), false))?;
         let form = multipart::Form::new().part("file", part);
         let response = self
             .http
@@ -275,6 +279,22 @@ fn value_to_u64_ref(value: &Value) -> Option<u64> {
     }
 }
 
+fn upload_mime_type(file_name: &str) -> Result<&'static str, AppError> {
+    let extension = file_name
+        .rsplit('.')
+        .next()
+        .filter(|extension| *extension != file_name)
+        .map(str::to_ascii_lowercase);
+
+    match extension.as_deref() {
+        Some("png") => Ok("image/png"),
+        Some("jpg" | "jpeg") => Ok("image/jpeg"),
+        Some("webp") => Ok("image/webp"),
+        Some("gif") => Ok("image/gif"),
+        _ => Err(AppError::unsupported_file_type()),
+    }
+}
+
 fn status_error(status: StatusCode, body: Option<String>) -> AppError {
     match status {
         StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN => AppError::token_invalid(),
@@ -306,7 +326,7 @@ mod tests {
     use reqwest::StatusCode;
     use serde_json::json;
 
-    use super::{extract_image_page, status_error};
+    use super::{extract_image_page, status_error, upload_mime_type};
     use crate::models::error::AppErrorCode;
 
     #[test]
@@ -443,6 +463,22 @@ mod tests {
         let error = extract_image_page(json!({ "ok": true }), 1, 20).expect_err("invalid shape");
 
         assert_eq!(error.code, AppErrorCode::ApiError);
+    }
+
+    #[test]
+    fn infers_supported_upload_mime_types() {
+        assert_eq!(upload_mime_type("cover.png").unwrap(), "image/png");
+        assert_eq!(upload_mime_type("cover.JPG").unwrap(), "image/jpeg");
+        assert_eq!(upload_mime_type("cover.jpeg").unwrap(), "image/jpeg");
+        assert_eq!(upload_mime_type("cover.webp").unwrap(), "image/webp");
+        assert_eq!(upload_mime_type("cover.gif").unwrap(), "image/gif");
+    }
+
+    #[test]
+    fn rejects_unsupported_upload_mime_types() {
+        let error = upload_mime_type("cover.bmp").expect_err("bmp should be unsupported");
+
+        assert_eq!(error.code, AppErrorCode::UnsupportedFileType);
     }
 
     #[test]

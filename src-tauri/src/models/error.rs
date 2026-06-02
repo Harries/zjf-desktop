@@ -70,7 +70,7 @@ impl AppError {
     pub fn unsupported_file_type() -> Self {
         Self {
             code: AppErrorCode::UnsupportedFileType,
-            message: "文件类型不支持，请选择 PNG、JPG、WebP 或 GIF。".to_string(),
+            message: "文件类型不支持，请选择 PNG、JPG、JPEG、WebP 或 GIF。".to_string(),
             retryable: false,
         }
     }
