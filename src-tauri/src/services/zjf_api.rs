@@ -7,7 +7,7 @@ use serde_json::Value;
 
 use crate::models::{
     error::AppError,
-    image::{RemoteImage, ZjfImageRaw},
+    image::{ImagePage, RemoteImage, ZjfImageRaw},
     upload::UploadFile,
 };
 use crate::services::logging;
@@ -38,26 +38,43 @@ impl ZjfApiClient {
     }
 
     pub async fn validate_token(&self, token: &str) -> Result<(), AppError> {
-        self.list_images(token).await.map(|_| ())
+        self.list_images(token, Some(1), Some(1)).await.map(|_| ())
     }
 
-    pub async fn list_images(&self, token: &str) -> Result<Vec<RemoteImage>, AppError> {
+    pub async fn list_images(
+        &self,
+        token: &str,
+        page: Option<u32>,
+        page_size: Option<u32>,
+    ) -> Result<ImagePage, AppError> {
+        let page = page.unwrap_or(1).max(1);
+        let page_size = page_size.unwrap_or(20).clamp(1, 100);
         let response = self
             .http
-            .get(self.endpoint("/api/uploads?pageSize=100"))
+            .get(self.endpoint(&format!("/api/uploads?page={page}&pageSize={page_size}")))
             .bearer_auth(token)
             .send()
             .await
             .map_err(network_error)?;
 
         let value = json_response(response).await?;
-        let images = extract_image_array(value)?
+        let image_page = extract_image_page(value, page, page_size)?;
+        let items = image_page
+            .items
             .into_iter()
             .filter_map(|value| serde_json::from_value::<ZjfImageRaw>(value).ok())
             .map(RemoteImage::from)
             .collect();
 
-        Ok(images)
+        Ok(ImagePage {
+            items,
+            page: image_page.page,
+            page_size: image_page.page_size,
+            total: image_page.total,
+            total_pages: image_page.total_pages,
+            has_next_page: image_page.has_next_page,
+            has_previous_page: image_page.has_previous_page,
+        })
     }
 
     pub async fn upload_image(
@@ -78,7 +95,7 @@ impl ZjfApiClient {
         let bytes = fs::read(&file.path)
             .map_err(|err| AppError::api(format!("无法读取上传文件：{err}"), false))?;
         let part = multipart::Part::bytes(bytes).file_name(file_name);
-        let form = multipart::Form::new().part("image", part);
+        let form = multipart::Form::new().part("file", part);
         let response = self
             .http
             .post(self.endpoint("/api/upload"))
@@ -137,18 +154,125 @@ async fn ensure_success(status: StatusCode) -> Result<(), AppError> {
     }
 }
 
-fn extract_image_array(value: Value) -> Result<Vec<Value>, AppError> {
+#[derive(Debug)]
+struct RawImagePage {
+    items: Vec<Value>,
+    page: u32,
+    page_size: u32,
+    total: Option<u64>,
+    total_pages: Option<u32>,
+    has_next_page: bool,
+    has_previous_page: bool,
+}
+
+fn extract_image_page(
+    value: Value,
+    requested_page: u32,
+    requested_page_size: u32,
+) -> Result<RawImagePage, AppError> {
     if let Value::Array(images) = value {
-        return Ok(images);
+        return Ok(raw_page_from_parts(
+            images,
+            None,
+            requested_page,
+            requested_page_size,
+        ));
     }
 
     for key in ["uploads", "data", "images", "items", "list"] {
         if let Some(Value::Array(images)) = value.get(key) {
-            return Ok(images.clone());
+            return Ok(raw_page_from_parts(
+                images.clone(),
+                Some(&value),
+                requested_page,
+                requested_page_size,
+            ));
+        }
+    }
+
+    for container_key in ["data", "result"] {
+        if let Some(Value::Object(container)) = value.get(container_key) {
+            for key in ["uploads", "images", "items", "list"] {
+                if let Some(Value::Array(images)) = container.get(key) {
+                    return Ok(raw_page_from_parts(
+                        images.clone(),
+                        value.get(container_key),
+                        requested_page,
+                        requested_page_size,
+                    ));
+                }
+            }
         }
     }
 
     Err(AppError::api("图片列表响应格式无效。", false))
+}
+
+fn raw_page_from_parts(
+    items: Vec<Value>,
+    metadata: Option<&Value>,
+    requested_page: u32,
+    requested_page_size: u32,
+) -> RawImagePage {
+    let page = metadata
+        .and_then(|value| first_u32(value, &["page", "currentPage"]))
+        .unwrap_or(requested_page)
+        .max(1);
+    let page_size = metadata
+        .and_then(|value| first_u32(value, &["pageSize", "limit", "perPage"]))
+        .unwrap_or(requested_page_size)
+        .clamp(1, 100);
+    let total = metadata
+        .and_then(|value| first_u64(value, &["total", "totalCount", "totalItems", "count"]));
+    let total_pages = metadata
+        .and_then(|value| first_u32(value, &["totalPages", "pageCount"]))
+        .or_else(|| {
+            total.map(|total| {
+                if total == 0 {
+                    1
+                } else {
+                    ((total + u64::from(page_size) - 1) / u64::from(page_size)) as u32
+                }
+            })
+        });
+    let has_next_page = metadata
+        .and_then(|value| first_bool(value, &["hasNextPage", "hasNext", "hasMore"]))
+        .or_else(|| total_pages.map(|total_pages| page < total_pages))
+        .unwrap_or_else(|| items.len() >= page_size as usize);
+    let has_previous_page = metadata
+        .and_then(|value| first_bool(value, &["hasPreviousPage", "hasPrev", "hasPrevious"]))
+        .unwrap_or(page > 1);
+
+    RawImagePage {
+        items,
+        page,
+        page_size,
+        total,
+        total_pages,
+        has_next_page,
+        has_previous_page,
+    }
+}
+
+fn first_bool(value: &Value, keys: &[&str]) -> Option<bool> {
+    keys.iter().find_map(|key| value.get(*key)?.as_bool())
+}
+
+fn first_u32(value: &Value, keys: &[&str]) -> Option<u32> {
+    first_u64(value, keys).and_then(|value| u32::try_from(value).ok())
+}
+
+fn first_u64(value: &Value, keys: &[&str]) -> Option<u64> {
+    keys.iter()
+        .find_map(|key| value_to_u64_ref(value.get(*key)?))
+}
+
+fn value_to_u64_ref(value: &Value) -> Option<u64> {
+    match value {
+        Value::Number(value) => value.as_u64(),
+        Value::String(value) => value.parse().ok(),
+        _ => None,
+    }
 }
 
 fn status_error(status: StatusCode, body: Option<String>) -> AppError {
@@ -182,31 +306,141 @@ mod tests {
     use reqwest::StatusCode;
     use serde_json::json;
 
-    use super::{extract_image_array, status_error};
+    use super::{extract_image_page, status_error};
     use crate::models::error::AppErrorCode;
 
     #[test]
     fn extracts_top_level_image_array() {
-        let images = extract_image_array(json!([{ "id": "image-001" }])).expect("array response");
+        let images =
+            extract_image_page(json!([{ "id": "image-001" }]), 1, 20).expect("array response");
 
-        assert_eq!(images.len(), 1);
-        assert_eq!(images[0]["id"], "image-001");
+        assert_eq!(images.items.len(), 1);
+        assert_eq!(images.items[0]["id"], "image-001");
     }
 
     #[test]
     fn extracts_nested_image_arrays() {
         for key in ["uploads", "data", "images", "items", "list"] {
-            let images =
-                extract_image_array(json!({ key: [{ "id": "image-001" }] })).expect("nested array");
+            let images = extract_image_page(json!({ key: [{ "id": "image-001" }] }), 1, 20)
+                .expect("nested array");
 
-            assert_eq!(images.len(), 1);
-            assert_eq!(images[0]["id"], "image-001");
+            assert_eq!(images.items.len(), 1);
+            assert_eq!(images.items[0]["id"], "image-001");
         }
     }
 
     #[test]
+    fn extracts_documented_upload_items_with_dimensions() {
+        let images = extract_image_page(
+            json!({
+                "success": true,
+                "items": [
+                    {
+                        "id": "upl_xxx",
+                        "url": "https://img.zjf.ai/images/2026/05/31/upl_xxx/original.png",
+                        "filename": "image.png",
+                        "size": 123456,
+                        "width": 1280,
+                        "height": 720,
+                        "type": "image/png",
+                        "visibility": "public",
+                        "uploadedAt": "2026-05-31T10:00:00.000Z"
+                    }
+                ]
+            }),
+            1,
+            20,
+        )
+        .expect("documented items response");
+
+        assert_eq!(images.items.len(), 1);
+        assert_eq!(images.items[0]["width"], 1280);
+        assert_eq!(images.items[0]["height"], 720);
+    }
+
+    #[test]
+    fn extracts_items_from_nested_data_response() {
+        let images = extract_image_page(
+            json!({
+                "success": true,
+                "data": {
+                    "items": [{ "id": "image-001" }]
+                }
+            }),
+            1,
+            20,
+        )
+        .expect("nested data items response");
+
+        assert_eq!(images.items.len(), 1);
+        assert_eq!(images.items[0]["id"], "image-001");
+    }
+
+    #[test]
+    fn extracts_pagination_metadata() {
+        let page = extract_image_page(
+            json!({
+                "success": true,
+                "items": [{ "id": "image-001" }],
+                "page": 2,
+                "pageSize": 20,
+                "total": 45
+            }),
+            1,
+            20,
+        )
+        .expect("paginated response");
+
+        assert_eq!(page.page, 2);
+        assert_eq!(page.page_size, 20);
+        assert_eq!(page.total, Some(45));
+        assert_eq!(page.total_pages, Some(3));
+        assert!(page.has_next_page);
+        assert!(page.has_previous_page);
+    }
+
+    #[test]
+    fn extracts_documented_page_response() {
+        let page = extract_image_page(
+            json!({
+                "success": true,
+                "items": [
+                    {
+                        "id": "upl_xxx",
+                        "url": "https://img.zjf.ai/images/2026/05/31/upl_xxx/original.png",
+                        "filename": "image.png",
+                        "size": 123456,
+                        "width": 1280,
+                        "height": 720,
+                        "type": "image/png",
+                        "visibility": "public",
+                        "variant": "original",
+                        "albumId": "alb_xxx",
+                        "albumName": "Default album",
+                        "uploadedAt": "2026-05-31T10:00:00.000Z"
+                    }
+                ],
+                "page": 1,
+                "pageSize": 20,
+                "total": 1
+            }),
+            1,
+            20,
+        )
+        .expect("documented paginated response");
+
+        assert_eq!(page.items.len(), 1);
+        assert_eq!(page.page, 1);
+        assert_eq!(page.page_size, 20);
+        assert_eq!(page.total, Some(1));
+        assert_eq!(page.total_pages, Some(1));
+        assert!(!page.has_next_page);
+        assert!(!page.has_previous_page);
+    }
+
+    #[test]
     fn rejects_unknown_image_response_shape() {
-        let error = extract_image_array(json!({ "ok": true })).expect_err("invalid shape");
+        let error = extract_image_page(json!({ "ok": true }), 1, 20).expect_err("invalid shape");
 
         assert_eq!(error.code, AppErrorCode::ApiError);
     }

@@ -13,6 +13,7 @@ import { autoCopyUploadedImage } from "../../utils/auto-copy-upload";
 import { filterImages } from "../../utils/filter-images";
 import { toUserErrorMessage } from "../../utils/user-error";
 
+const galleryPageSize = 20;
 const supportedImageExtensions = ["png", "jpg", "jpeg", "gif", "webp", "bmp", "svg", "avif"];
 
 function formatBytes(bytes?: number) {
@@ -78,6 +79,7 @@ async function bytesFromBlob(blob: Blob) {
 export function GalleryPage() {
   const queryClient = useQueryClient();
   const [searchKeyword, setSearchKeyword] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
   const [uploadNotice, setUploadNotice] = useState<string>();
   const [isSelectingFiles, setIsSelectingFiles] = useState(false);
   const [isDragActive, setIsDragActive] = useState(false);
@@ -88,16 +90,17 @@ export function GalleryPage() {
   const markSuccess = useUploadQueueStore((state) => state.markSuccess);
   const markFailed = useUploadQueueStore((state) => state.markFailed);
   const {
-    data: images = [],
+    data: imagePage,
     error,
     isError,
     isFetching,
     isLoading,
     refetch,
   } = useQuery({
-    queryKey: ["images"],
-    queryFn: listImages,
+    queryKey: ["images", currentPage, galleryPageSize],
+    queryFn: () => listImages({ page: currentPage, pageSize: galleryPageSize }),
   });
+  const images = imagePage?.items ?? [];
 
   const stats = useMemo(() => {
     const totalBytes = images.reduce((sum, image) => sum + (image.sizeBytes ?? 0), 0);
@@ -105,15 +108,26 @@ export function GalleryPage() {
     const privateCount = images.filter((image) => image.visibility === "private").length;
 
     return [
-      { label: "全部图片", value: images.length.toString() },
-      { label: "公开图片", value: publicCount.toString() },
-      { label: "私有图片", value: privateCount.toString() },
-      { label: "总容量", value: formatBytes(totalBytes) },
+      {
+        label: imagePage?.total === undefined ? "当前页" : "全部图片",
+        value: (imagePage?.total ?? images.length).toString(),
+      },
+      { label: "当前页公开", value: publicCount.toString() },
+      { label: "当前页私有", value: privateCount.toString() },
+      { label: "当前页容量", value: formatBytes(totalBytes) },
     ];
-  }, [images]);
+  }, [imagePage?.total, images]);
 
   const normalizedKeyword = searchKeyword.trim().toLowerCase();
   const filteredImages = useMemo(() => filterImages(images, searchKeyword), [images, searchKeyword]);
+  const totalPages = imagePage?.totalPages;
+  const hasPreviousPage = currentPage > 1 || Boolean(imagePage?.hasPreviousPage);
+  const hasNextPage =
+    Boolean(imagePage?.hasNextPage) || (totalPages !== undefined ? currentPage < totalPages : false);
+  const paginationSummary =
+    totalPages !== undefined
+      ? `第 ${currentPage} / ${totalPages} 页`
+      : `第 ${currentPage} 页${hasNextPage ? "，还有更多" : ""}`;
 
   const uploadLocalFile = useCallback(
     async (path: string, fileName: string, sizeBytes: number) => {
@@ -125,10 +139,9 @@ export function GalleryPage() {
       try {
         const uploaded = await uploadImage(path, fileName);
         markSuccess(taskId, uploaded);
-        queryClient.setQueryData<RemoteImage[]>(["images"], (current = []) => [
-          uploaded,
-          ...current.filter((image) => image.id !== uploaded.id),
-        ]);
+        queryClient.setQueryData(["image", uploaded.id], uploaded);
+        setCurrentPage(1);
+        void queryClient.invalidateQueries({ queryKey: ["images"] });
         const copied = await autoCopyUploadedImage(uploaded);
         return { success: true, copied };
       } catch (uploadError) {
@@ -194,10 +207,9 @@ export function GalleryPage() {
             updateProgress(taskId, 35);
             const uploaded = await uploadImage(path, fileName);
             markSuccess(taskId, uploaded);
-            queryClient.setQueryData<RemoteImage[]>(["images"], (current = []) => [
-              uploaded,
-              ...current.filter((image) => image.id !== uploaded.id),
-            ]);
+            queryClient.setQueryData(["image", uploaded.id], uploaded);
+            setCurrentPage(1);
+            void queryClient.invalidateQueries({ queryKey: ["images"] });
             const copied = await autoCopyUploadedImage(uploaded);
             return { success: true, copied };
           } catch (pasteError) {
@@ -376,7 +388,9 @@ export function GalleryPage() {
           </label>
 
           <div className="search-summary">
-            {normalizedKeyword ? `匹配 ${filteredImages.length} / ${images.length}` : `共 ${images.length} 张`}
+            {normalizedKeyword
+              ? `当前页匹配 ${filteredImages.length} / ${images.length}`
+              : `当前页 ${images.length} 张`}
           </div>
 
           {normalizedKeyword ? (
@@ -443,7 +457,10 @@ export function GalleryPage() {
             <button
               className="image-card image-card-button"
               key={image.id}
-              onClick={() => navigateToImage(image.id)}
+              onClick={() => {
+                queryClient.setQueryData(["image", image.id], image);
+                navigateToImage(image.id);
+              }}
               type="button"
             >
               <div className="image-thumb">
@@ -463,6 +480,39 @@ export function GalleryPage() {
             </button>
           ))}
         </section>
+      ) : null}
+
+      {!isLoading && !isError && (images.length > 0 || currentPage > 1) ? (
+        <nav className="pagination-bar" aria-label="图片分页">
+          <div className="pagination-summary">
+            <strong>{paginationSummary}</strong>
+            {imagePage?.total !== undefined ? <span>共 {imagePage.total} 张</span> : null}
+          </div>
+          <div className="pagination-actions">
+            <button
+              className="secondary-button"
+              disabled={!hasPreviousPage || isFetching}
+              onClick={() => {
+                setSearchKeyword("");
+                setCurrentPage((page) => Math.max(1, page - 1));
+              }}
+              type="button"
+            >
+              上一页
+            </button>
+            <button
+              className="secondary-button"
+              disabled={!hasNextPage || isFetching}
+              onClick={() => {
+                setSearchKeyword("");
+                setCurrentPage((page) => page + 1);
+              }}
+              type="button"
+            >
+              下一页
+            </button>
+          </div>
+        </nav>
       ) : null}
     </div>
   );

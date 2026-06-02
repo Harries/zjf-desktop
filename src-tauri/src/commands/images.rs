@@ -1,12 +1,14 @@
 use crate::{
-    models::{error::AppError, image::RemoteImage},
+    models::{error::AppError, image::ImagePage},
     services::{token_store, zjf_api::ZjfApiClient},
 };
 
 #[tauri::command]
-pub async fn list_images() -> Result<Vec<RemoteImage>, AppError> {
+pub async fn list_images(page: Option<u32>, page_size: Option<u32>) -> Result<ImagePage, AppError> {
     let token = token_store::get_token()?;
-    ZjfApiClient::default().list_images(&token).await
+    ZjfApiClient::default()
+        .list_images(&token, page, page_size)
+        .await
 }
 
 #[tauri::command]

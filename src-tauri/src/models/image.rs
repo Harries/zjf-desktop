@@ -16,6 +16,18 @@ pub struct RemoteImage {
     pub created_at: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ImagePage {
+    pub items: Vec<RemoteImage>,
+    pub page: u32,
+    pub page_size: u32,
+    pub total: Option<u64>,
+    pub total_pages: Option<u32>,
+    pub has_next_page: bool,
+    pub has_previous_page: bool,
+}
+
 #[derive(Debug, Clone, Copy, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum ImageVisibility {

@@ -46,22 +46,6 @@ export function AppShell({
           ))}
         </nav>
 
-        <p className="nav-label">筛选</p>
-        <div className="nav-list">
-          <button className="nav-item" type="button">
-            <span>●</span>
-            全部图片
-          </button>
-          <button className="nav-item" type="button">
-            <span>◇</span>
-            公开图片
-          </button>
-          <button className="nav-item" type="button">
-            <span>◆</span>
-            私有图片
-          </button>
-        </div>
-
         <div className="token-card">
           <strong>Token 状态</strong>
           <span>{tokenLabel}</span>

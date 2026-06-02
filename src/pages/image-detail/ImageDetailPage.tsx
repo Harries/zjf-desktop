@@ -70,27 +70,29 @@ export function ImageDetailPage({ imageId }: ImageDetailPageProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const {
-    data: images = [],
+    data: imagePage,
     error,
     isError,
     isLoading,
     refetch,
   } = useQuery({
-    queryKey: ["images"],
-    queryFn: listImages,
+    queryKey: ["images", "detail", imageId],
+    queryFn: () => listImages({ page: 1, pageSize: 100 }),
   });
+  const cachedImage = imageId ? queryClient.getQueryData<RemoteImage>(["image", imageId]) : undefined;
+  const images = imagePage?.items ?? [];
 
   const image = useMemo(
-    () => images.find((item) => item.id === imageId),
-    [imageId, images],
+    () => cachedImage ?? images.find((item) => item.id === imageId),
+    [cachedImage, imageId, images],
   );
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleteImage(id),
     onSuccess: (_, deletedImageId) => {
-      queryClient.setQueryData<RemoteImage[]>(["images"], (current = []) =>
-        current.filter((item) => item.id !== deletedImageId),
-      );
+      void deletedImageId;
+      if (imageId) void queryClient.removeQueries({ queryKey: ["image", imageId] });
+      void queryClient.invalidateQueries({ queryKey: ["images"] });
       navigateTo(routes.gallery);
     },
   });

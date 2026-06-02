@@ -317,6 +317,34 @@ body {
   white-space: nowrap;
 }
 
+.pagination-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f8fbfc;
+  padding: 12px;
+}
+
+.pagination-summary {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  color: #344257;
+  font-size: 13px;
+}
+
+.pagination-summary span {
+  color: var(--muted);
+}
+
+.pagination-actions {
+  display: flex;
+  gap: 8px;
+}
+
 .dropzone {
   display: grid;
   min-height: 96px;
@@ -929,6 +957,15 @@ h1 {
 
   .settings-segmented {
     min-width: 0;
+  }
+
+  .pagination-bar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .pagination-actions {
+    justify-content: space-between;
   }
 
   .switch-control {

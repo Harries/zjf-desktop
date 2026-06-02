@@ -11,3 +11,12 @@ export type RemoteImage = {
   createdAt?: string;
 };
 
+export type RemoteImagePage = {
+  items: RemoteImage[];
+  page: number;
+  pageSize: number;
+  total?: number;
+  totalPages?: number;
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
+};

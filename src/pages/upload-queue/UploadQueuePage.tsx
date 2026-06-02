@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { uploadImage } from "../../api/desktop-commands";
-import type { RemoteImage } from "../../types/image";
 import type { UploadTask, UploadTaskStatus } from "../../types/upload";
 import { useUploadQueueStore } from "../../stores/upload-queue-store";
 import { autoCopyUploadedImage } from "../../utils/auto-copy-upload";
@@ -63,10 +62,8 @@ export function UploadQueuePage() {
     try {
       const uploaded = await uploadImage(task.sourcePath, task.fileName);
       markSuccess(task.id, uploaded);
-      queryClient.setQueryData<RemoteImage[]>(["images"], (current = []) => [
-        uploaded,
-        ...current.filter((image) => image.id !== uploaded.id),
-      ]);
+      queryClient.setQueryData(["image", uploaded.id], uploaded);
+      void queryClient.invalidateQueries({ queryKey: ["images"] });
       const copied = await autoCopyUploadedImage(uploaded);
       setNotice(copied ? "重试上传成功，已自动复制链接。" : "重试上传成功。");
     } catch (error) {

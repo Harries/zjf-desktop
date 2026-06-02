@@ -2,7 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 
 import type { TokenStatus } from "../types/auth";
 import type { AppError } from "../types/error";
-import type { RemoteImage } from "../types/image";
+import type { RemoteImage, RemoteImagePage } from "../types/image";
 import type { AppSettings } from "../types/settings";
 import { safeLogger } from "../utils/safe-logger";
 
@@ -96,8 +96,11 @@ export function openExternalUrl(url: string) {
   return invokeCommand<void>("open_external_url", { url });
 }
 
-export function listImages() {
-  return invokeCommand<RemoteImage[]>("list_images");
+export function listImages(options: { page?: number; pageSize?: number } = {}) {
+  return invokeCommand<RemoteImagePage>("list_images", {
+    page: options.page,
+    pageSize: options.pageSize,
+  });
 }
 
 export function uploadImage(path: string, fileName?: string) {

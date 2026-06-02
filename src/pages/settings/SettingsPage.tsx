@@ -85,7 +85,8 @@ export function SettingsPage() {
     mutationFn: clearToken,
     onSuccess: (status) => {
       queryClient.setQueryData(["tokenStatus"], status);
-      queryClient.setQueryData(["images"], []);
+      void queryClient.removeQueries({ queryKey: ["images"] });
+      void queryClient.removeQueries({ queryKey: ["image"] });
       navigateTo(routes.setup);
     },
     onError: (error) => {
