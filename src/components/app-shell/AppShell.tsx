@@ -1,7 +1,7 @@
 import { getVersion } from "@tauri-apps/api/app";
 import { useEffect, useState, type ReactNode } from "react";
 
-type NavKey = "gallery" | "uploads" | "settings";
+type NavKey = "gallery" | "albums" | "uploads" | "settings";
 
 type AppShellProps = {
   active: NavKey;
@@ -13,6 +13,7 @@ type AppShellProps = {
 
 const navItems: Array<{ key: NavKey; label: string; icon: string }> = [
   { key: "gallery", label: "图库", icon: "□" },
+  { key: "albums", label: "相册管理", icon: "▣" },
   { key: "uploads", label: "上传队列", icon: "↑" },
   { key: "settings", label: "设置", icon: "⌘" },
 ];
@@ -34,7 +35,7 @@ export function AppShell({
         if (!disposed) setAppVersion(version);
       })
       .catch(() => {
-        if (!disposed) setAppVersion("1.0.8");
+        if (!disposed) setAppVersion("1.0.9");
       });
 
     return () => {

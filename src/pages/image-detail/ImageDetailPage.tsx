@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
+  createSignedImageUrl,
   deleteImage,
   listImages,
   openExternalUrl,
@@ -9,6 +10,7 @@ import {
 } from "../../api/desktop-commands";
 import { navigateTo, routes } from "../../app/routes";
 import { ErrorState } from "../../components/error-state";
+import { PrivateAwareImage } from "../../components/private-image";
 import type { RemoteImage } from "../../types/image";
 import { formatImageLink, type ImageLinkFormat } from "../../utils/format-image-link";
 import { toUserErrorMessage } from "../../utils/user-error";
@@ -22,6 +24,8 @@ const copyOptions: Array<{ format: ImageLinkFormat; label: string }> = [
   { format: "markdown", label: "复制 Markdown" },
   { format: "html", label: "复制 HTML" },
 ];
+
+const signedUrlExpiresIn = 3600;
 
 function formatBytes(bytes?: number) {
   if (!bytes || bytes <= 0) return "未知大小";
@@ -108,11 +112,27 @@ export function ImageDetailPage({ imageId }: ImageDetailPageProps) {
     }
   };
 
+  const createTemporaryLink = async () => {
+    if (!image) return;
+
+    try {
+      const signedUrl = await createSignedImageUrl(image.id, signedUrlExpiresIn);
+      await writeClipboardText(signedUrl.url);
+      setMessage("临时访问链接已生成并复制到剪贴板，有效期 1 小时。");
+    } catch (signedUrlError) {
+      setMessage(toUserErrorMessage(signedUrlError, "生成临时访问链接失败，请稍后重试。"));
+    }
+  };
+
   const openImage = async () => {
     if (!image) return;
 
     try {
-      await openExternalUrl(image.url);
+      const targetUrl =
+        image.visibility === "private"
+          ? (await createSignedImageUrl(image.id, signedUrlExpiresIn)).url
+          : image.url;
+      await openExternalUrl(targetUrl);
       setMessage("已交给默认浏览器打开");
     } catch (openError) {
       setMessage(toUserErrorMessage(openError, "打开图片失败，请稍后重试。"));
@@ -210,7 +230,11 @@ export function ImageDetailPage({ imageId }: ImageDetailPageProps) {
 
       <section className="detail-layout">
         <div className="detail-preview">
-          {image.url ? <img alt={image.fileName} src={image.url} /> : <span>IMG</span>}
+          {image.url || image.visibility === "private" ? (
+            <PrivateAwareImage image={image} />
+          ) : (
+            <span>IMG</span>
+          )}
         </div>
 
         <aside className="detail-panel">
@@ -230,8 +254,21 @@ export function ImageDetailPage({ imageId }: ImageDetailPageProps) {
             <span>上传时间</span>
             <strong>{formatDate(image.createdAt)}</strong>
           </div>
+          <div className="detail-meta">
+            <span>访问权限</span>
+            <strong>{image.visibility === "private" ? "私有" : image.visibility === "public" ? "公开" : "未知"}</strong>
+          </div>
 
           <div className="copy-list" aria-label="复制图片链接">
+            {image.visibility === "private" ? (
+              <button
+                className="primary-button"
+                onClick={() => void createTemporaryLink()}
+                type="button"
+              >
+                生成临时访问链接
+              </button>
+            ) : null}
             {copyOptions.map((option) => (
               <button
                 className="secondary-button"

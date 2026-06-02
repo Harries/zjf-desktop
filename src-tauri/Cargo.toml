@@ -1,6 +1,6 @@
 [package]
 name = "zjf-desktop"
-version = "1.0.8"
+version = "1.0.9"
 description = "ZJF Desktop image management client"
 authors = ["ZJF Desktop Contributors"]
 edition = "2021"

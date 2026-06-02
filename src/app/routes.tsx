@@ -1,6 +1,7 @@
 export const routes = {
   setup: "/setup",
   gallery: "/gallery",
+  albums: "/albums",
   imageDetail: "/images/:id",
   uploads: "/uploads",
   settings: "/settings",
@@ -15,7 +16,7 @@ export function routeForHash(hash: string): AppRoute {
     return routes.imageDetail;
   }
 
-  if (route === routes.gallery || route === routes.uploads || route === routes.settings) {
+  if (route === routes.gallery || route === routes.albums || route === routes.uploads || route === routes.settings) {
     return route;
   }
 

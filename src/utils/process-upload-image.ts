@@ -6,12 +6,10 @@ type ProcessedUploadImage = {
 };
 
 const canvasProcessableMimeTypes = new Set(["image/png", "image/jpeg", "image/webp"]);
+const fallbackWatermarkText = "ZJF";
 
 export function shouldProcessUploadImage(settings?: AccountUploadSettings) {
-  return Boolean(
-    settings?.defaultCompress ||
-      (settings?.defaultWatermark && settings.watermarkText?.trim()),
-  );
+  return Boolean(settings?.defaultCompress || settings?.defaultWatermark);
 }
 
 export function mimeTypeFromFileName(fileName: string) {
@@ -68,7 +66,9 @@ function drawWatermark(
   canvas: HTMLCanvasElement,
   settings?: AccountUploadSettings,
 ) {
-  const watermarkText = settings?.defaultWatermark ? settings.watermarkText?.trim() : "";
+  const watermarkText = settings?.defaultWatermark
+    ? settings.watermarkText?.trim() || fallbackWatermarkText
+    : "";
   if (!watermarkText) return;
 
   const fontSize = Math.max(16, Math.round(Math.min(canvas.width, canvas.height) * 0.045));

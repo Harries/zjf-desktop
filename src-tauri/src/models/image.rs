@@ -30,6 +30,13 @@ pub struct ImagePage {
     pub has_previous_page: bool,
 }
 
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SignedImageUrl {
+    pub url: String,
+    pub expires_at: Option<String>,
+}
+
 #[derive(Debug, Clone, Copy, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum ImageVisibility {

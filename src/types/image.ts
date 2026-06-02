@@ -22,3 +22,8 @@ export type RemoteImagePage = {
   hasNextPage: boolean;
   hasPreviousPage: boolean;
 };
+
+export type SignedImageUrl = {
+  url: string;
+  expiresAt?: string;
+};

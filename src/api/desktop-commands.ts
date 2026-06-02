@@ -3,7 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import type { RemoteAlbum } from "../types/album";
 import type { TokenStatus } from "../types/auth";
 import type { AppError } from "../types/error";
-import type { RemoteImage, RemoteImagePage } from "../types/image";
+import type { RemoteImage, RemoteImagePage, SignedImageUrl } from "../types/image";
 import type { AccountUploadSettings, AppSettings } from "../types/settings";
 import { safeLogger } from "../utils/safe-logger";
 
@@ -101,15 +101,28 @@ export function openExternalUrl(url: string) {
   return invokeCommand<void>("open_external_url", { url });
 }
 
-export function listImages(options: { page?: number; pageSize?: number } = {}) {
+export function listImages(options: { page?: number; pageSize?: number; albumId?: string } = {}) {
   return invokeCommand<RemoteImagePage>("list_images", {
     page: options.page,
     pageSize: options.pageSize,
+    albumId: options.albumId,
   });
 }
 
 export function listAlbums() {
   return invokeCommand<RemoteAlbum[]>("list_albums");
+}
+
+export function createAlbum(name: string) {
+  return invokeCommand<RemoteAlbum>("create_album", { name });
+}
+
+export function renameAlbum(albumId: string, name: string) {
+  return invokeCommand<void>("rename_album", { albumId, name });
+}
+
+export function deleteAlbum(albumId: string) {
+  return invokeCommand<void>("delete_album", { albumId });
 }
 
 export function uploadImage(
@@ -137,6 +150,17 @@ export function readUploadFileBytes(path: string) {
   return invokeCommand<number[]>("read_upload_file_bytes", { path });
 }
 
+export function getUploadFileSize(path: string) {
+  return invokeCommand<number>("get_upload_file_size", { path });
+}
+
 export function deleteImage(imageId: string) {
   return invokeCommand<void>("delete_image", { imageId });
+}
+
+export function createSignedImageUrl(imageId: string, expiresIn?: number) {
+  return invokeCommand<SignedImageUrl>("create_signed_image_url", {
+    imageId,
+    expiresIn,
+  });
 }

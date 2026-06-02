@@ -68,6 +68,13 @@ pub fn read_upload_file_bytes(path: String) -> Result<Vec<u8>, AppError> {
         .map_err(|err| AppError::api(format!("无法读取待处理图片：{err}"), false))
 }
 
+#[tauri::command]
+pub fn get_upload_file_size(path: String) -> Result<u64, AppError> {
+    fs::metadata(PathBuf::from(path))
+        .map(|metadata| metadata.len())
+        .map_err(|err| AppError::api(format!("无法读取图片大小：{err}"), false))
+}
+
 fn sanitize_file_name(file_name: &str) -> String {
     let sanitized: String = file_name
         .chars()

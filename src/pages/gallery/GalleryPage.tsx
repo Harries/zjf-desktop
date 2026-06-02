@@ -7,6 +7,7 @@ import {
   getUploadSettings,
   listAlbums,
   listImages,
+  getUploadFileSize,
   readUploadFileBytes,
   savePastedImage,
   uploadImage,
@@ -14,7 +15,9 @@ import {
 import { navigateToImage } from "../../app/routes";
 import { Dropzone } from "../../components/dropzone";
 import { ErrorState } from "../../components/error-state";
+import { PrivateAwareImage } from "../../components/private-image";
 import type { RemoteImage } from "../../types/image";
+import type { AccountUploadSettings } from "../../types/settings";
 import { useUploadQueueStore } from "../../stores/upload-queue-store";
 import { autoCopyUploadedImage } from "../../utils/auto-copy-upload";
 import { filterImages } from "../../utils/filter-images";
@@ -94,6 +97,7 @@ export function GalleryPage() {
   const [searchKeyword, setSearchKeyword] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedAlbumId, setSelectedAlbumId] = useState("");
+  const [forcePrivateUpload, setForcePrivateUpload] = useState(false);
   const [uploadNotice, setUploadNotice] = useState<string>();
   const [isSelectingFiles, setIsSelectingFiles] = useState(false);
   const [isDragActive, setIsDragActive] = useState(false);
@@ -119,7 +123,11 @@ export function GalleryPage() {
     queryFn: listAlbums,
     retry: 1,
   });
-  const { data: uploadSettings, isFetching: isFetchingUploadSettings } = useQuery({
+  const {
+    data: uploadSettings,
+    isFetching: isFetchingUploadSettings,
+    refetch: refetchUploadSettings,
+  } = useQuery({
     queryKey: ["upload-settings"],
     queryFn: getUploadSettings,
     retry: 1,
@@ -157,14 +165,38 @@ export function GalleryPage() {
       ? `第 ${currentPage} / ${totalPages} 页`
       : `第 ${currentPage} 页${hasNextPage ? "，还有更多" : ""}`;
 
+  const loadLatestUploadSettings = useCallback(async () => {
+    const result = await refetchUploadSettings();
+    if (result.error) throw result.error;
+    return result.data;
+  }, [refetchUploadSettings]);
+
+  const settingsForCurrentUpload = useCallback(
+    (settings?: AccountUploadSettings) =>
+      forcePrivateUpload
+        ? {
+            ...settings,
+            defaultVisibility: "private" as const,
+            defaultCompress: settings?.defaultCompress ?? false,
+            defaultWatermark: settings?.defaultWatermark ?? false,
+          }
+        : settings,
+    [forcePrivateUpload],
+  );
+
   const uploadLocalFile = useCallback(
-    async (path: string, fileName: string, sizeBytes: number) => {
+    async (
+      path: string,
+      fileName: string,
+      sizeBytes: number,
+      settingsForUpload = uploadSettings,
+    ) => {
       const taskId = addTask({
         fileName,
         sourcePath: path,
         albumId: selectedUploadAlbumId,
         albumName: selectedUploadAlbumName,
-        uploadSettings,
+        uploadSettings: settingsForUpload,
         sizeBytes,
       });
 
@@ -175,12 +207,12 @@ export function GalleryPage() {
         let uploadPath = path;
         let uploadFileName = fileName;
 
-        if (shouldProcessUploadImage(uploadSettings)) {
+        if (shouldProcessUploadImage(settingsForUpload)) {
           const sourceBytes = await readUploadFileBytes(path);
           const sourceBlob = new Blob([new Uint8Array(sourceBytes)], {
             type: mimeTypeFromFileName(fileName),
           });
-          const processed = await processUploadImage(sourceBlob, fileName, uploadSettings);
+          const processed = await processUploadImage(sourceBlob, fileName, settingsForUpload);
 
           if (processed) {
             uploadFileName = processed.fileName;
@@ -194,7 +226,7 @@ export function GalleryPage() {
           uploadPath,
           uploadFileName,
           selectedUploadAlbumId,
-          uploadSettings,
+          settingsForUpload,
         );
         markSuccess(taskId, uploaded);
         queryClient.setQueryData(["image", uploaded.id], uploaded);
@@ -216,8 +248,8 @@ export function GalleryPage() {
       selectedUploadAlbumId,
       selectedUploadAlbumName,
       setTaskSourcePath,
-      uploadSettings,
       updateProgress,
+      uploadSettings,
     ],
   );
 
@@ -229,6 +261,14 @@ export function GalleryPage() {
         return;
       }
 
+      let settingsForUpload = uploadSettings;
+      try {
+        settingsForUpload = settingsForCurrentUpload(await loadLatestUploadSettings());
+      } catch (settingsError) {
+        setUploadNotice(toUserErrorMessage(settingsError, "读取上传设置失败，请稍后重试。"));
+        return;
+      }
+
       const validPaths = paths.filter(isSupportedImagePath);
       const skippedCount = paths.length - validPaths.length;
       if (validPaths.length === 0) {
@@ -237,7 +277,10 @@ export function GalleryPage() {
       }
 
       const results = await Promise.all(
-        validPaths.map((path) => uploadLocalFile(path, extractFileName(path), 0)),
+        validPaths.map(async (path) => {
+          const sizeBytes = await getUploadFileSize(path).catch(() => 0);
+          return uploadLocalFile(path, extractFileName(path), sizeBytes, settingsForUpload);
+        }),
       );
       const successCount = results.filter((result) => result.success).length;
       const failedCount = results.length - successCount;
@@ -254,13 +297,27 @@ export function GalleryPage() {
         );
       }
     },
-    [isReadingUploadSettings, uploadLocalFile],
+    [
+      isReadingUploadSettings,
+      loadLatestUploadSettings,
+      settingsForCurrentUpload,
+      uploadLocalFile,
+      uploadSettings,
+    ],
   );
 
   const uploadPastedBlobs = useCallback(
     async (blobs: Blob[], showEmptyNotice: boolean) => {
       if (isReadingUploadSettings) {
         setUploadNotice("正在读取上传设置，请稍后再试。");
+        return;
+      }
+
+      let settingsForUpload = uploadSettings;
+      try {
+        settingsForUpload = settingsForCurrentUpload(await loadLatestUploadSettings());
+      } catch (settingsError) {
+        setUploadNotice(toUserErrorMessage(settingsError, "读取上传设置失败，请稍后重试。"));
         return;
       }
 
@@ -278,7 +335,7 @@ export function GalleryPage() {
             fileName,
             albumId: selectedUploadAlbumId,
             albumName: selectedUploadAlbumName,
-            uploadSettings,
+            uploadSettings: settingsForUpload,
             sizeBytes: blob.size,
           });
 
@@ -286,7 +343,7 @@ export function GalleryPage() {
           updateProgress(taskId, 10);
 
           try {
-            const processed = await processUploadImage(blob, fileName, uploadSettings);
+            const processed = await processUploadImage(blob, fileName, settingsForUpload);
             const savedFileName = processed?.fileName ?? fileName;
             const savedBytes = processed?.bytes ?? (await bytesFromBlob(blob));
             const path = await savePastedImage(savedFileName, savedBytes);
@@ -296,7 +353,7 @@ export function GalleryPage() {
               path,
               savedFileName,
               selectedUploadAlbumId,
-              uploadSettings,
+              settingsForUpload,
             );
             markSuccess(taskId, uploaded);
             queryClient.setQueryData(["image", uploaded.id], uploaded);
@@ -323,6 +380,7 @@ export function GalleryPage() {
     [
       addTask,
       isReadingUploadSettings,
+      loadLatestUploadSettings,
       markFailed,
       markSuccess,
       markUploading,
@@ -330,8 +388,9 @@ export function GalleryPage() {
       selectedUploadAlbumId,
       selectedUploadAlbumName,
       setTaskSourcePath,
-      uploadSettings,
+      settingsForCurrentUpload,
       updateProgress,
+      uploadSettings,
     ],
   );
 
@@ -454,6 +513,14 @@ export function GalleryPage() {
                 </option>
               ))}
             </select>
+          </label>
+          <label className="upload-private-field">
+            <input
+              checked={forcePrivateUpload}
+              onChange={(event) => setForcePrivateUpload(event.target.checked)}
+              type="checkbox"
+            />
+            <span>私有上传</span>
           </label>
           <button
             className="secondary-button"
@@ -588,8 +655,8 @@ export function GalleryPage() {
               type="button"
             >
               <div className="image-thumb">
-                {image.thumbnailUrl || image.url ? (
-                  <img alt={image.fileName} src={image.thumbnailUrl ?? image.url} />
+                {image.thumbnailUrl || image.url || image.visibility === "private" ? (
+                  <PrivateAwareImage image={image} />
                 ) : (
                   <span>IMG</span>
                 )}

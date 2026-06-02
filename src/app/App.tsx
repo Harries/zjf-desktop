@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 
 import { getTokenStatus } from "../api/desktop-commands";
 import { AppShell } from "../components/app-shell";
+import { AlbumsPage } from "../pages/albums";
 import { GalleryPage } from "../pages/gallery";
 import { ImageDetailPage } from "../pages/image-detail";
 import { SettingsPage } from "../pages/settings";
@@ -48,18 +49,27 @@ export function App() {
     );
   }
 
-  const active = route === routes.uploads ? "uploads" : route === routes.settings ? "settings" : "gallery";
+  const active =
+    route === routes.albums
+      ? "albums"
+      : route === routes.uploads
+        ? "uploads"
+        : route === routes.settings
+          ? "settings"
+          : "gallery";
 
   return (
     <AppShell
       active={active}
       onNavigate={(key) => {
         if (key === "gallery") navigateTo(routes.gallery);
+        if (key === "albums") navigateTo(routes.albums);
         if (key === "uploads") navigateTo(routes.uploads);
         if (key === "settings") navigateTo(routes.settings);
       }}
       tokenLabel={tokenLabel}
     >
+      {route === routes.albums ? <AlbumsPage /> : null}
       {route === routes.uploads ? <UploadQueuePage /> : null}
       {route === routes.settings ? <SettingsPage /> : null}
       {route === routes.imageDetail ? <ImageDetailPage imageId={imageIdFromHash(window.location.hash)} /> : null}

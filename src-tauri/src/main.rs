@@ -29,11 +29,16 @@ fn main() {
             commands::clipboard::write_clipboard_text,
             commands::clipboard::open_external_url,
             commands::albums::list_albums,
+            commands::albums::create_album,
+            commands::albums::rename_album,
+            commands::albums::delete_album,
             commands::images::list_images,
             commands::images::delete_image,
+            commands::images::create_signed_image_url,
             commands::uploads::upload_image,
             commands::uploads::save_pasted_image,
-            commands::uploads::read_upload_file_bytes
+            commands::uploads::read_upload_file_bytes,
+            commands::uploads::get_upload_file_size
         ])
         .run(tauri::generate_context!())
         .expect("failed to run ZJF Desktop");

@@ -8,7 +8,7 @@ use serde_json::Value;
 use crate::models::{
     album::{RemoteAlbum, ZjfAlbumRaw},
     error::AppError,
-    image::{ImagePage, RemoteImage, ZjfImageRaw},
+    image::{ImagePage, RemoteImage, SignedImageUrl, ZjfImageRaw},
     settings::{AccountUploadSettings, AccountUploadSettingsRaw},
     upload::UploadFile,
 };
@@ -40,7 +40,9 @@ impl ZjfApiClient {
     }
 
     pub async fn validate_token(&self, token: &str) -> Result<(), AppError> {
-        self.list_images(token, Some(1), Some(1)).await.map(|_| ())
+        self.list_images(token, Some(1), Some(1), None)
+            .await
+            .map(|_| ())
     }
 
     pub async fn list_images(
@@ -48,12 +50,21 @@ impl ZjfApiClient {
         token: &str,
         page: Option<u32>,
         page_size: Option<u32>,
+        album_id: Option<&str>,
     ) -> Result<ImagePage, AppError> {
         let page = page.unwrap_or(1).max(1);
         let page_size = page_size.unwrap_or(20).clamp(1, 100);
+        let mut query = vec![
+            ("page", page.to_string()),
+            ("pageSize", page_size.to_string()),
+        ];
+        if let Some(album_id) = album_id.map(str::trim).filter(|value| !value.is_empty()) {
+            query.push(("albumId", album_id.to_string()));
+        }
         let response = self
             .http
-            .get(self.endpoint(&format!("/api/uploads?page={page}&pageSize={page_size}")))
+            .get(self.endpoint("/api/uploads"))
+            .query(&query)
             .bearer_auth(token)
             .send()
             .await
@@ -97,6 +108,67 @@ impl ZjfApiClient {
             .collect();
 
         Ok(albums)
+    }
+
+    pub async fn create_album(&self, token: &str, name: &str) -> Result<RemoteAlbum, AppError> {
+        let name = name.trim();
+        if name.is_empty() {
+            return Err(AppError::api("相册名称不能为空。", false));
+        }
+
+        let response = self
+            .http
+            .post(self.endpoint("/api/albums"))
+            .bearer_auth(token)
+            .json(&serde_json::json!({ "name": name }))
+            .send()
+            .await
+            .map_err(network_error)?;
+
+        let value = json_response(response).await?;
+        extract_album(value)
+    }
+
+    pub async fn rename_album(
+        &self,
+        token: &str,
+        album_id: &str,
+        name: &str,
+    ) -> Result<(), AppError> {
+        let name = name.trim();
+        if album_id.trim().is_empty() {
+            return Err(AppError::api("缺少相册 ID。", false));
+        }
+        if name.is_empty() {
+            return Err(AppError::api("相册名称不能为空。", false));
+        }
+
+        let response = self
+            .http
+            .patch(self.endpoint(&format!("/api/albums/{}", album_id.trim())))
+            .bearer_auth(token)
+            .json(&serde_json::json!({ "name": name }))
+            .send()
+            .await
+            .map_err(network_error)?;
+
+        ensure_success(response.status()).await
+    }
+
+    pub async fn delete_album(&self, token: &str, album_id: &str) -> Result<(), AppError> {
+        if album_id.trim().is_empty() {
+            return Err(AppError::api("缺少相册 ID。", false));
+        }
+
+        let response = self
+            .http
+            .delete(self.endpoint(&format!("/api/albums/{}", album_id.trim())))
+            .bearer_auth(token)
+            .send()
+            .await
+            .map_err(network_error)?;
+
+        ensure_success(response.status()).await
     }
 
     pub async fn get_upload_settings(
@@ -180,6 +252,30 @@ impl ZjfApiClient {
             .map_err(network_error)?;
 
         ensure_success(response.status()).await
+    }
+
+    pub async fn create_signed_image_url(
+        &self,
+        token: &str,
+        image_id: &str,
+        expires_in: Option<u32>,
+    ) -> Result<SignedImageUrl, AppError> {
+        let mut payload = serde_json::Map::new();
+        if let Some(expires_in) = expires_in {
+            payload.insert("expiresIn".to_string(), Value::from(expires_in));
+        }
+
+        let response = self
+            .http
+            .post(self.endpoint(&format!("/api/uploads/{image_id}/signed-url")))
+            .bearer_auth(token)
+            .json(&Value::Object(payload))
+            .send()
+            .await
+            .map_err(network_error)?;
+
+        let value = json_response(response).await?;
+        extract_signed_image_url(value)
     }
 
     fn endpoint(&self, path: &str) -> String {
@@ -285,6 +381,23 @@ fn extract_album_items(value: Value) -> Result<Vec<Value>, AppError> {
     Err(AppError::api("相册列表响应格式无效。", false))
 }
 
+fn extract_album(value: Value) -> Result<RemoteAlbum, AppError> {
+    let album_value = value
+        .get("album")
+        .or_else(|| value.get("data"))
+        .cloned()
+        .unwrap_or(value);
+    let raw = serde_json::from_value::<ZjfAlbumRaw>(album_value)
+        .map_err(|err| AppError::api(format!("相册响应格式无效：{err}"), false))?;
+    let album = RemoteAlbum::from(raw);
+
+    if album.id.is_empty() {
+        Err(AppError::api("相册响应缺少 ID。", false))
+    } else {
+        Ok(album)
+    }
+}
+
 fn extract_upload_settings(value: Value) -> Result<AccountUploadSettings, AppError> {
     let settings_value = value
         .get("settings")
@@ -295,6 +408,55 @@ fn extract_upload_settings(value: Value) -> Result<AccountUploadSettings, AppErr
         .map_err(|err| AppError::api(format!("上传设置响应格式无效：{err}"), false))?;
 
     Ok(AccountUploadSettings::from(raw))
+}
+
+fn extract_signed_image_url(value: Value) -> Result<SignedImageUrl, AppError> {
+    let url = first_string(
+        &value,
+        &[
+            "url",
+            "signedUrl",
+            "signedURL",
+            "signed_url",
+            "previewUrl",
+            "temporaryUrl",
+        ],
+    )
+    .or_else(|| {
+        value.get("data").and_then(|value| {
+            first_string(
+                value,
+                &[
+                    "url",
+                    "signedUrl",
+                    "signedURL",
+                    "signed_url",
+                    "previewUrl",
+                    "temporaryUrl",
+                ],
+            )
+        })
+    })
+    .or_else(|| {
+        value
+            .get("signedUrl")
+            .and_then(|value| first_string(value, &["url", "href"]))
+    })
+    .filter(|url| !url.trim().is_empty())
+    .ok_or_else(|| AppError::api("临时链接响应格式无效。", false))?;
+
+    let expires_at = first_string(&value, &["expiresAt", "expires_at"]).or_else(|| {
+        value
+            .get("data")
+            .and_then(|value| first_string(value, &["expiresAt", "expires_at"]))
+    });
+
+    Ok(SignedImageUrl { url, expires_at })
+}
+
+fn first_string(value: &Value, keys: &[&str]) -> Option<String> {
+    keys.iter()
+        .find_map(|key| value.get(*key)?.as_str().map(ToString::to_string))
 }
 
 fn form_from_upload_settings(
@@ -429,8 +591,8 @@ mod tests {
     use serde_json::json;
 
     use super::{
-        extract_album_items, extract_image_page, extract_upload_settings, status_error,
-        upload_mime_type,
+        extract_album_items, extract_image_page, extract_signed_image_url, extract_upload_settings,
+        status_error, upload_mime_type,
     };
     use crate::models::error::AppErrorCode;
 
@@ -596,6 +758,24 @@ mod tests {
         assert_eq!(settings.default_quality, Some(70));
         assert!(settings.default_watermark);
         assert_eq!(settings.watermark_text.as_deref(), Some("zjf.ai"));
+    }
+
+    #[test]
+    fn extracts_signed_image_url_from_nested_response() {
+        let signed_url = extract_signed_image_url(json!({
+            "success": true,
+            "data": {
+                "signedUrl": "https://img.zjf.ai/private?token=abc",
+                "expiresAt": "2026-06-02T12:00:00.000Z"
+            }
+        }))
+        .expect("signed URL response should parse");
+
+        assert_eq!(signed_url.url, "https://img.zjf.ai/private?token=abc");
+        assert_eq!(
+            signed_url.expires_at.as_deref(),
+            Some("2026-06-02T12:00:00.000Z")
+        );
     }
 
     #[test]
