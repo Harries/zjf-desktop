@@ -32,6 +32,7 @@ function formatBytes(bytes: number) {
 function getTaskMeta(task: UploadTask) {
   if (task.status === "success" && task.image?.url) return task.image.url;
   if (task.errorMessage) return task.errorMessage;
+  if (task.albumName) return `上传到：${task.albumName}`;
   return task.sourcePath ?? "准备上传";
 }
 
@@ -60,7 +61,12 @@ export function UploadQueuePage() {
     updateProgress(task.id, 35);
 
     try {
-      const uploaded = await uploadImage(task.sourcePath, task.fileName);
+      const uploaded = await uploadImage(
+        task.sourcePath,
+        undefined,
+        task.albumId,
+        task.uploadSettings,
+      );
       markSuccess(task.id, uploaded);
       queryClient.setQueryData(["image", uploaded.id], uploaded);
       void queryClient.invalidateQueries({ queryKey: ["images"] });

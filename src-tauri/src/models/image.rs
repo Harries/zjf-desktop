@@ -13,6 +13,8 @@ pub struct RemoteImage {
     pub size_bytes: Option<u64>,
     pub mime_type: Option<String>,
     pub visibility: ImageVisibility,
+    pub album_id: Option<String>,
+    pub album_name: Option<String>,
     pub created_at: Option<String>,
 }
 
@@ -58,6 +60,10 @@ pub struct ZjfImageRaw {
     #[serde(alias = "mime_type", alias = "type", alias = "format")]
     pub mime_type: Option<String>,
     pub visibility: Option<String>,
+    #[serde(alias = "album_id")]
+    pub album_id: Option<Value>,
+    #[serde(alias = "album_name")]
+    pub album_name: Option<String>,
     #[serde(
         alias = "uploadedAt",
         alias = "created_at",
@@ -94,6 +100,8 @@ impl From<ZjfImageRaw> for RemoteImage {
                 .as_deref()
                 .map(ImageVisibility::from)
                 .unwrap_or(ImageVisibility::Unknown),
+            album_id: raw.album_id.and_then(value_to_string),
+            album_name: raw.album_name,
             created_at: raw.created_at,
         }
     }
@@ -154,6 +162,8 @@ mod tests {
             "size": "340000",
             "type": "image/png",
             "visibility": "public",
+            "albumId": "alb_123",
+            "albumName": "Default album",
             "uploadedAt": "2026-06-01T15:32:00Z"
         }))
         .expect("raw image should parse");
@@ -171,5 +181,7 @@ mod tests {
         assert_eq!(image.height, Some(1080));
         assert_eq!(image.size_bytes, Some(340000));
         assert!(matches!(image.visibility, ImageVisibility::Public));
+        assert_eq!(image.album_id.as_deref(), Some("alb_123"));
+        assert_eq!(image.album_name.as_deref(), Some("Default album"));
     }
 }

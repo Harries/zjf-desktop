@@ -4,8 +4,11 @@ use tauri::AppHandle;
 use tauri::Manager;
 
 use crate::{
-    models::{error::AppError, settings::AppSettings},
-    services::settings_store,
+    models::{
+        error::AppError,
+        settings::{AccountUploadSettings, AppSettings},
+    },
+    services::{settings_store, token_store, zjf_api::ZjfApiClient},
 };
 
 #[tauri::command]
@@ -32,4 +35,10 @@ pub fn clear_thumbnail_cache(app: AppHandle) -> Result<(), AppError> {
     }
 
     Ok(())
+}
+
+#[tauri::command]
+pub async fn get_upload_settings() -> Result<AccountUploadSettings, AppError> {
+    let token = token_store::get_token()?;
+    ZjfApiClient::default().get_upload_settings(&token).await
 }

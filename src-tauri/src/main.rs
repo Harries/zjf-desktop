@@ -25,12 +25,15 @@ fn main() {
             commands::settings::get_app_settings,
             commands::settings::save_app_settings,
             commands::settings::clear_thumbnail_cache,
+            commands::settings::get_upload_settings,
             commands::clipboard::write_clipboard_text,
             commands::clipboard::open_external_url,
+            commands::albums::list_albums,
             commands::images::list_images,
             commands::images::delete_image,
             commands::uploads::upload_image,
-            commands::uploads::save_pasted_image
+            commands::uploads::save_pasted_image,
+            commands::uploads::read_upload_file_bytes
         ])
         .run(tauri::generate_context!())
         .expect("failed to run ZJF Desktop");

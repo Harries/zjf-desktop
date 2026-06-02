@@ -7,7 +7,9 @@ use std::{
 use tauri::{AppHandle, Manager};
 
 use crate::{
-    models::{error::AppError, image::RemoteImage, upload::UploadFile},
+    models::{
+        error::AppError, image::RemoteImage, settings::AccountUploadSettings, upload::UploadFile,
+    },
     services::{token_store, zjf_api::ZjfApiClient},
 };
 
@@ -15,11 +17,15 @@ use crate::{
 pub async fn upload_image(
     path: String,
     file_name: Option<String>,
+    album_id: Option<String>,
+    upload_settings: Option<AccountUploadSettings>,
 ) -> Result<RemoteImage, AppError> {
     let token = token_store::get_token()?;
     let file = UploadFile {
         path: PathBuf::from(path),
         file_name,
+        album_id,
+        upload_settings,
     };
 
     ZjfApiClient::default().upload_image(&token, file).await
@@ -54,6 +60,12 @@ pub fn save_pasted_image(
         .map_err(|err| AppError::secure_store(format!("无法保存粘贴图片：{err}")))?;
 
     Ok(path.to_string_lossy().to_string())
+}
+
+#[tauri::command]
+pub fn read_upload_file_bytes(path: String) -> Result<Vec<u8>, AppError> {
+    fs::read(PathBuf::from(path))
+        .map_err(|err| AppError::api(format!("无法读取待处理图片：{err}"), false))
 }
 
 fn sanitize_file_name(file_name: &str) -> String {

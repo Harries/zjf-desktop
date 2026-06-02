@@ -3,7 +3,14 @@ import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { listImages, savePastedImage, uploadImage } from "../../api/desktop-commands";
+import {
+  getUploadSettings,
+  listAlbums,
+  listImages,
+  readUploadFileBytes,
+  savePastedImage,
+  uploadImage,
+} from "../../api/desktop-commands";
 import { navigateToImage } from "../../app/routes";
 import { Dropzone } from "../../components/dropzone";
 import { ErrorState } from "../../components/error-state";
@@ -11,6 +18,11 @@ import type { RemoteImage } from "../../types/image";
 import { useUploadQueueStore } from "../../stores/upload-queue-store";
 import { autoCopyUploadedImage } from "../../utils/auto-copy-upload";
 import { filterImages } from "../../utils/filter-images";
+import {
+  mimeTypeFromFileName,
+  processUploadImage,
+  shouldProcessUploadImage,
+} from "../../utils/process-upload-image";
 import { toUserErrorMessage } from "../../utils/user-error";
 
 const galleryPageSize = 20;
@@ -81,6 +93,7 @@ export function GalleryPage() {
   const queryClient = useQueryClient();
   const [searchKeyword, setSearchKeyword] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [selectedAlbumId, setSelectedAlbumId] = useState("");
   const [uploadNotice, setUploadNotice] = useState<string>();
   const [isSelectingFiles, setIsSelectingFiles] = useState(false);
   const [isDragActive, setIsDragActive] = useState(false);
@@ -101,7 +114,21 @@ export function GalleryPage() {
     queryKey: ["images", currentPage, galleryPageSize],
     queryFn: () => listImages({ page: currentPage, pageSize: galleryPageSize }),
   });
+  const { data: albums = [], isFetching: isFetchingAlbums } = useQuery({
+    queryKey: ["albums"],
+    queryFn: listAlbums,
+    retry: 1,
+  });
+  const { data: uploadSettings, isFetching: isFetchingUploadSettings } = useQuery({
+    queryKey: ["upload-settings"],
+    queryFn: getUploadSettings,
+    retry: 1,
+  });
   const images = imagePage?.items ?? [];
+  const selectedAlbum = albums.find((album) => album.id === selectedAlbumId);
+  const selectedUploadAlbumId = selectedAlbumId || undefined;
+  const selectedUploadAlbumName = selectedAlbum?.name;
+  const isReadingUploadSettings = isFetchingUploadSettings && !uploadSettings;
 
   const stats = useMemo(() => {
     const totalBytes = images.reduce((sum, image) => sum + (image.sizeBytes ?? 0), 0);
@@ -132,13 +159,43 @@ export function GalleryPage() {
 
   const uploadLocalFile = useCallback(
     async (path: string, fileName: string, sizeBytes: number) => {
-      const taskId = addTask({ fileName, sourcePath: path, sizeBytes });
+      const taskId = addTask({
+        fileName,
+        sourcePath: path,
+        albumId: selectedUploadAlbumId,
+        albumName: selectedUploadAlbumName,
+        uploadSettings,
+        sizeBytes,
+      });
 
       markUploading(taskId);
       updateProgress(taskId, 35);
 
       try {
-        const uploaded = await uploadImage(path, fileName);
+        let uploadPath = path;
+        let uploadFileName = fileName;
+
+        if (shouldProcessUploadImage(uploadSettings)) {
+          const sourceBytes = await readUploadFileBytes(path);
+          const sourceBlob = new Blob([new Uint8Array(sourceBytes)], {
+            type: mimeTypeFromFileName(fileName),
+          });
+          const processed = await processUploadImage(sourceBlob, fileName, uploadSettings);
+
+          if (processed) {
+            uploadFileName = processed.fileName;
+            uploadPath = await savePastedImage(processed.fileName, processed.bytes);
+            setTaskSourcePath(taskId, uploadPath);
+            updateProgress(taskId, 55);
+          }
+        }
+
+        const uploaded = await uploadImage(
+          uploadPath,
+          uploadFileName,
+          selectedUploadAlbumId,
+          uploadSettings,
+        );
         markSuccess(taskId, uploaded);
         queryClient.setQueryData(["image", uploaded.id], uploaded);
         setCurrentPage(1);
@@ -150,12 +207,27 @@ export function GalleryPage() {
         return { success: false, copied: false };
       }
     },
-    [addTask, markFailed, markSuccess, markUploading, queryClient, updateProgress],
+    [
+      addTask,
+      markFailed,
+      markSuccess,
+      markUploading,
+      queryClient,
+      selectedUploadAlbumId,
+      selectedUploadAlbumName,
+      setTaskSourcePath,
+      uploadSettings,
+      updateProgress,
+    ],
   );
 
   const uploadPaths = useCallback(
     async (paths: string[]) => {
       if (paths.length === 0) return;
+      if (isReadingUploadSettings) {
+        setUploadNotice("正在读取上传设置，请稍后再试。");
+        return;
+      }
 
       const validPaths = paths.filter(isSupportedImagePath);
       const skippedCount = paths.length - validPaths.length;
@@ -182,11 +254,16 @@ export function GalleryPage() {
         );
       }
     },
-    [uploadLocalFile],
+    [isReadingUploadSettings, uploadLocalFile],
   );
 
   const uploadPastedBlobs = useCallback(
     async (blobs: Blob[], showEmptyNotice: boolean) => {
+      if (isReadingUploadSettings) {
+        setUploadNotice("正在读取上传设置，请稍后再试。");
+        return;
+      }
+
       const imageBlobs = blobs.filter((blob) => supportedImageMimeTypes.includes(blob.type));
 
       if (imageBlobs.length === 0) {
@@ -197,16 +274,30 @@ export function GalleryPage() {
       const results = await Promise.all(
         imageBlobs.map(async (blob, index) => {
           const fileName = createPastedFileName(index, blob.type);
-          const taskId = addTask({ fileName, sizeBytes: blob.size });
+          const taskId = addTask({
+            fileName,
+            albumId: selectedUploadAlbumId,
+            albumName: selectedUploadAlbumName,
+            uploadSettings,
+            sizeBytes: blob.size,
+          });
 
           markUploading(taskId);
           updateProgress(taskId, 10);
 
           try {
-            const path = await savePastedImage(fileName, await bytesFromBlob(blob));
+            const processed = await processUploadImage(blob, fileName, uploadSettings);
+            const savedFileName = processed?.fileName ?? fileName;
+            const savedBytes = processed?.bytes ?? (await bytesFromBlob(blob));
+            const path = await savePastedImage(savedFileName, savedBytes);
             setTaskSourcePath(taskId, path);
             updateProgress(taskId, 35);
-            const uploaded = await uploadImage(path, fileName);
+            const uploaded = await uploadImage(
+              path,
+              savedFileName,
+              selectedUploadAlbumId,
+              uploadSettings,
+            );
             markSuccess(taskId, uploaded);
             queryClient.setQueryData(["image", uploaded.id], uploaded);
             setCurrentPage(1);
@@ -229,7 +320,19 @@ export function GalleryPage() {
           : `已粘贴上传 ${successCount} 个图片。${copiedCount > 0 ? "已自动复制链接。" : ""}`,
       );
     },
-    [addTask, markFailed, markSuccess, markUploading, queryClient, setTaskSourcePath, updateProgress],
+    [
+      addTask,
+      isReadingUploadSettings,
+      markFailed,
+      markSuccess,
+      markUploading,
+      queryClient,
+      selectedUploadAlbumId,
+      selectedUploadAlbumName,
+      setTaskSourcePath,
+      uploadSettings,
+      updateProgress,
+    ],
   );
 
   const handleUploadSelect = async () => {
@@ -337,6 +440,21 @@ export function GalleryPage() {
         </div>
 
         <div className="page-actions">
+          <label className="upload-album-field">
+            <span>上传到</span>
+            <select
+              disabled={isFetchingAlbums && albums.length === 0}
+              onChange={(event) => setSelectedAlbumId(event.target.value)}
+              value={selectedAlbumId}
+            >
+              <option value="">默认相册</option>
+              {albums.map((album) => (
+                <option key={album.id} value={album.id}>
+                  {album.imageCount === undefined ? album.name : `${album.name} (${album.imageCount})`}
+                </option>
+              ))}
+            </select>
+          </label>
           <button
             className="secondary-button"
             disabled={isFetching}
@@ -347,13 +465,18 @@ export function GalleryPage() {
           </button>
           <button
             className="primary-button"
-            disabled={isSelectingFiles}
+            disabled={isSelectingFiles || isReadingUploadSettings}
             onClick={() => void handleUploadSelect()}
             type="button"
           >
-            {isSelectingFiles ? "上传中" : "上传"}
+            {isSelectingFiles ? "上传中" : isReadingUploadSettings ? "读取设置" : "上传"}
           </button>
-          <button className="secondary-button" onClick={() => void handlePasteUpload()} type="button">
+          <button
+            className="secondary-button"
+            disabled={isReadingUploadSettings}
+            onClick={() => void handlePasteUpload()}
+            type="button"
+          >
             粘贴上传
           </button>
         </div>
@@ -363,7 +486,7 @@ export function GalleryPage() {
 
       <Dropzone
         active={isDragActive}
-        disabled={isSelectingFiles}
+        disabled={isSelectingFiles || isReadingUploadSettings}
         onClick={() => void handleUploadSelect()}
       />
 

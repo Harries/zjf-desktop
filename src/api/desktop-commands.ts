@@ -1,9 +1,10 @@
 import { invoke } from "@tauri-apps/api/core";
 
+import type { RemoteAlbum } from "../types/album";
 import type { TokenStatus } from "../types/auth";
 import type { AppError } from "../types/error";
 import type { RemoteImage, RemoteImagePage } from "../types/image";
-import type { AppSettings } from "../types/settings";
+import type { AccountUploadSettings, AppSettings } from "../types/settings";
 import { safeLogger } from "../utils/safe-logger";
 
 type InvokeArgs = Record<string, unknown>;
@@ -88,6 +89,10 @@ export function clearThumbnailCache() {
   return invokeCommand<void>("clear_thumbnail_cache");
 }
 
+export function getUploadSettings() {
+  return invokeCommand<AccountUploadSettings>("get_upload_settings");
+}
+
 export function writeClipboardText(text: string) {
   return invokeCommand<void>("write_clipboard_text", { text });
 }
@@ -103,10 +108,21 @@ export function listImages(options: { page?: number; pageSize?: number } = {}) {
   });
 }
 
-export function uploadImage(path: string, fileName?: string) {
+export function listAlbums() {
+  return invokeCommand<RemoteAlbum[]>("list_albums");
+}
+
+export function uploadImage(
+  path: string,
+  fileName?: string,
+  albumId?: string,
+  uploadSettings?: AccountUploadSettings,
+) {
   return invokeCommand<RemoteImage>("upload_image", {
     path,
     fileName,
+    albumId,
+    uploadSettings,
   });
 }
 
@@ -115,6 +131,10 @@ export function savePastedImage(fileName: string, bytes: number[]) {
     fileName,
     bytes,
   });
+}
+
+export function readUploadFileBytes(path: string) {
+  return invokeCommand<number[]>("read_upload_file_bytes", { path });
 }
 
 export function deleteImage(imageId: string) {

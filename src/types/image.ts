@@ -8,6 +8,8 @@ export type RemoteImage = {
   sizeBytes?: number;
   mimeType?: string;
   visibility?: "public" | "private" | "unknown";
+  albumId?: string;
+  albumName?: string;
   createdAt?: string;
 };
 

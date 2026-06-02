@@ -6,3 +6,10 @@ export type AppSettings = {
   thumbnailCacheEnabled: boolean;
 };
 
+export type AccountUploadSettings = {
+  defaultVisibility?: "public" | "private";
+  defaultCompress: boolean;
+  defaultQuality?: number;
+  defaultWatermark: boolean;
+  watermarkText?: string;
+};

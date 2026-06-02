@@ -1,12 +1,16 @@
 import { create } from "zustand";
 
 import type { RemoteImage } from "../types/image";
+import type { AccountUploadSettings } from "../types/settings";
 import type { UploadTask } from "../types/upload";
 
 type AddUploadTaskInput = {
   id?: string;
   fileName: string;
   sourcePath?: string;
+  albumId?: string;
+  albumName?: string;
+  uploadSettings?: AccountUploadSettings;
   sizeBytes: number;
 };
 
@@ -53,6 +57,9 @@ export const useUploadQueueStore = create<UploadQueueState>((set) => ({
           id: taskId,
           fileName: input.fileName,
           sourcePath: input.sourcePath,
+          albumId: input.albumId,
+          albumName: input.albumName,
+          uploadSettings: input.uploadSettings,
           sizeBytes: input.sizeBytes,
           status: "queued",
           progress: 0,

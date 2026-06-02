@@ -6,8 +6,10 @@ use reqwest::{multipart, StatusCode};
 use serde_json::Value;
 
 use crate::models::{
+    album::{RemoteAlbum, ZjfAlbumRaw},
     error::AppError,
     image::{ImagePage, RemoteImage, ZjfImageRaw},
+    settings::{AccountUploadSettings, AccountUploadSettingsRaw},
     upload::UploadFile,
 };
 use crate::services::logging;
@@ -77,6 +79,42 @@ impl ZjfApiClient {
         })
     }
 
+    pub async fn list_albums(&self, token: &str) -> Result<Vec<RemoteAlbum>, AppError> {
+        let response = self
+            .http
+            .get(self.endpoint("/api/albums"))
+            .bearer_auth(token)
+            .send()
+            .await
+            .map_err(network_error)?;
+
+        let value = json_response(response).await?;
+        let albums = extract_album_items(value)?
+            .into_iter()
+            .filter_map(|value| serde_json::from_value::<ZjfAlbumRaw>(value).ok())
+            .map(RemoteAlbum::from)
+            .filter(|album| !album.id.is_empty())
+            .collect();
+
+        Ok(albums)
+    }
+
+    pub async fn get_upload_settings(
+        &self,
+        token: &str,
+    ) -> Result<AccountUploadSettings, AppError> {
+        let response = self
+            .http
+            .get(self.endpoint("/api/settings"))
+            .bearer_auth(token)
+            .send()
+            .await
+            .map_err(network_error)?;
+
+        let value = json_response(response).await?;
+        extract_upload_settings(value)
+    }
+
     pub async fn upload_image(
         &self,
         token: &str,
@@ -99,7 +137,18 @@ impl ZjfApiClient {
             .file_name(file_name)
             .mime_str(mime_type)
             .map_err(|err| AppError::api(format!("无法识别上传文件类型：{err}"), false))?;
-        let form = multipart::Form::new().part("file", part);
+        let mut form = multipart::Form::new().part("file", part);
+        if let Some(album_id) = file
+            .album_id
+            .as_deref()
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+        {
+            form = form.text("albumId", album_id.to_string());
+        }
+        if let Some(settings) = file.upload_settings {
+            form = form_from_upload_settings(form, &settings);
+        }
         let response = self
             .http
             .post(self.endpoint("/api/upload"))
@@ -210,6 +259,59 @@ fn extract_image_page(
     }
 
     Err(AppError::api("图片列表响应格式无效。", false))
+}
+
+fn extract_album_items(value: Value) -> Result<Vec<Value>, AppError> {
+    if let Value::Array(albums) = value {
+        return Ok(albums);
+    }
+
+    for key in ["items", "albums", "data", "list"] {
+        if let Some(Value::Array(albums)) = value.get(key) {
+            return Ok(albums.clone());
+        }
+    }
+
+    for container_key in ["data", "result"] {
+        if let Some(Value::Object(container)) = value.get(container_key) {
+            for key in ["items", "albums", "list"] {
+                if let Some(Value::Array(albums)) = container.get(key) {
+                    return Ok(albums.clone());
+                }
+            }
+        }
+    }
+
+    Err(AppError::api("相册列表响应格式无效。", false))
+}
+
+fn extract_upload_settings(value: Value) -> Result<AccountUploadSettings, AppError> {
+    let settings_value = value
+        .get("settings")
+        .or_else(|| value.get("data"))
+        .cloned()
+        .unwrap_or(value);
+    let raw = serde_json::from_value::<AccountUploadSettingsRaw>(settings_value)
+        .map_err(|err| AppError::api(format!("上传设置响应格式无效：{err}"), false))?;
+
+    Ok(AccountUploadSettings::from(raw))
+}
+
+fn form_from_upload_settings(
+    form: multipart::Form,
+    settings: &AccountUploadSettings,
+) -> multipart::Form {
+    let mut form = form;
+
+    if let Some(visibility) = settings
+        .default_visibility
+        .as_deref()
+        .filter(|value| matches!(*value, "public" | "private"))
+    {
+        form = form.text("visibility", visibility.to_string());
+    }
+
+    form
 }
 
 fn raw_page_from_parts(
@@ -326,7 +428,10 @@ mod tests {
     use reqwest::StatusCode;
     use serde_json::json;
 
-    use super::{extract_image_page, status_error, upload_mime_type};
+    use super::{
+        extract_album_items, extract_image_page, extract_upload_settings, status_error,
+        upload_mime_type,
+    };
     use crate::models::error::AppErrorCode;
 
     #[test]
@@ -456,6 +561,41 @@ mod tests {
         assert_eq!(page.total_pages, Some(1));
         assert!(!page.has_next_page);
         assert!(!page.has_previous_page);
+    }
+
+    #[test]
+    fn extracts_album_items_from_documented_response() {
+        let albums = extract_album_items(json!({
+            "success": true,
+            "items": [
+                { "id": "alb_123", "name": "Default album" }
+            ]
+        }))
+        .expect("album response should parse");
+
+        assert_eq!(albums.len(), 1);
+        assert_eq!(albums[0]["id"], "alb_123");
+    }
+
+    #[test]
+    fn extracts_upload_settings_from_documented_response() {
+        let settings = extract_upload_settings(json!({
+            "success": true,
+            "settings": {
+                "defaultVisibility": "private",
+                "defaultCompress": true,
+                "defaultQuality": 70,
+                "defaultWatermark": true,
+                "watermarkText": "zjf.ai"
+            }
+        }))
+        .expect("settings response should parse");
+
+        assert_eq!(settings.default_visibility.as_deref(), Some("private"));
+        assert!(settings.default_compress);
+        assert_eq!(settings.default_quality, Some(70));
+        assert!(settings.default_watermark);
+        assert_eq!(settings.watermark_text.as_deref(), Some("zjf.ai"));
     }
 
     #[test]

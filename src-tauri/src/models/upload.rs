@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use serde::Serialize;
 
-use super::image::RemoteImage;
+use super::{image::RemoteImage, settings::AccountUploadSettings};
 
 #[derive(Debug, Clone, Serialize)]
 #[allow(dead_code)]
@@ -32,4 +32,6 @@ pub enum UploadTaskStatus {
 pub struct UploadFile {
     pub path: PathBuf,
     pub file_name: Option<String>,
+    pub album_id: Option<String>,
+    pub upload_settings: Option<AccountUploadSettings>,
 }
