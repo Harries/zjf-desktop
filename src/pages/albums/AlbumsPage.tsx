@@ -11,7 +11,6 @@ import {
 import { navigateToImage } from "../../app/routes";
 import { ErrorState } from "../../components/error-state";
 import { PrivateAwareImage } from "../../components/private-image";
-import type { RemoteAlbum } from "../../types/album";
 import type { RemoteImage } from "../../types/image";
 import { toUserErrorMessage } from "../../utils/user-error";
 

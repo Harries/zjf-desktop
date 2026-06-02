@@ -35,7 +35,7 @@ export function AppShell({
         if (!disposed) setAppVersion(version);
       })
       .catch(() => {
-        if (!disposed) setAppVersion("1.0.9");
+        if (!disposed) setAppVersion("1.1.0");
       });
 
     return () => {
