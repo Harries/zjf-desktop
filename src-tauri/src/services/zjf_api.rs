@@ -231,14 +231,14 @@ fn raw_page_from_parts(
                 if total == 0 {
                     1
                 } else {
-                    ((total + u64::from(page_size) - 1) / u64::from(page_size)) as u32
+                    total.div_ceil(u64::from(page_size)) as u32
                 }
             })
         });
     let has_next_page = metadata
         .and_then(|value| first_bool(value, &["hasNextPage", "hasNext", "hasMore"]))
         .or_else(|| total_pages.map(|total_pages| page < total_pages))
-        .unwrap_or_else(|| items.len() >= page_size as usize);
+        .unwrap_or(items.len() >= page_size as usize);
     let has_previous_page = metadata
         .and_then(|value| first_bool(value, &["hasPreviousPage", "hasPrev", "hasPrevious"]))
         .unwrap_or(page > 1);
