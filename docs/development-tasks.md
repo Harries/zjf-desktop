@@ -1,4 +1,4 @@
-# zjf.ai Desktop 开发任务文档
+# ZJF Desktop 开发任务文档
 
 ## 1. 任务拆分原则
 

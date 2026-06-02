@@ -1,8 +1,8 @@
-# zjf.ai Desktop 技术架构文档
+# ZJF Desktop 技术架构文档
 
 ## 1. 架构目标
 
-zjf.ai Desktop 是一个跨平台桌面客户端。用户配置 zjf.ai API Token 后，可以在桌面端完成图片上传、图片列表管理、链接复制、删除图片和偏好设置。
+ZJF Desktop 是一个跨平台桌面客户端。用户配置 zjf.ai API Token 后，可以在桌面端完成图片上传、图片列表管理、链接复制、删除图片和偏好设置。
 
 技术架构需要满足以下目标：
 

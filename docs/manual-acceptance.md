@@ -1,4 +1,4 @@
-# zjf.ai Desktop 手动验收清单
+# ZJF Desktop 手动验收清单
 
 验收前准备：
 

@@ -1,6 +1,6 @@
-# zjf.ai Desktop
+# ZJF Desktop
 
-zjf.ai Desktop 是 zjf.ai 图床的桌面客户端。用户配置自己的 zjf.ai API Token 后，可以在桌面端完成图片上传、浏览、搜索、复制链接、删除和基础偏好管理。
+ZJF Desktop 是 zjf.ai 图床的桌面客户端。用户配置自己的 zjf.ai API Token 后，可以在桌面端完成图片上传、浏览、搜索、复制链接、删除和基础偏好管理。
 
 ## 功能
 
@@ -108,10 +108,10 @@ git push origin v1.0.0
 触发后会生成：
 
 - 运行前端和 Rust 检查。
-- `zjf.ai.Desktop_<version>_arm64.dmg`
-- `zjf.ai.Desktop_<version>_x64.dmg`
-- `zjf.ai.Desktop_<version>_x64-setup.exe`
-- `zjf.ai.Desktop_<version>_x64_en-US.msi`
+- `ZJF.Desktop_<version>_arm64.dmg`
+- `ZJF.Desktop_<version>_x64.dmg`
+- `ZJF.Desktop_<version>_x64-setup.exe`
+- `ZJF.Desktop_<version>_x64_en-US.msi`
 - 将安装包上传到对应 tag 的 GitHub Release。
 
 ## API

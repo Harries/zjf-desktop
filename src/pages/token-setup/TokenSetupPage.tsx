@@ -36,7 +36,7 @@ export function TokenSetupPage({ onConfigured }: TokenSetupPageProps) {
       <section className="setup-hero">
         <div className="brand">
           <span className="brand-mark">Z</span>
-          <span>zjf.ai Desktop</span>
+          <span>ZJF Desktop</span>
         </div>
         <h1>连接你的 zjf.ai 图床</h1>
         <p className="intro">

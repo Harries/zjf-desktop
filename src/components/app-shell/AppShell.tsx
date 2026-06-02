@@ -28,7 +28,7 @@ export function AppShell({
       <aside className="sidebar">
         <div className="brand">
           <span className="brand-mark">Z</span>
-          <span>zjf.ai</span>
+          <span>ZJF Desktop</span>
         </div>
 
         <p className="nav-label">管理</p>

@@ -28,5 +28,5 @@ fn main() {
             commands::uploads::save_pasted_image
         ])
         .run(tauri::generate_context!())
-        .expect("failed to run zjf.ai Desktop");
+        .expect("failed to run ZJF Desktop");
 }

@@ -1,8 +1,8 @@
 [package]
 name = "zjf-desktop"
 version = "0.1.0"
-description = "zjf.ai Desktop image management client"
-authors = ["zjf.ai Desktop Contributors"]
+description = "ZJF Desktop image management client"
+authors = ["ZJF Desktop Contributors"]
 edition = "2021"
 
 [build-dependencies]

@@ -1,4 +1,4 @@
-# zjf.ai Desktop 内测包构建说明
+# ZJF Desktop 内测包构建说明
 
 环境要求：
 
@@ -49,13 +49,13 @@ pnpm tauri build
 
 安装与运行：
 
-- 打开 DMG 后将 `zjf.ai Desktop.app` 拖入 Applications。
+- 打开 DMG 后将 `ZJF Desktop.app` 拖入 Applications。
 - 首次启动输入 zjf.ai API Token。
 - 如 macOS Gatekeeper 阻止启动，在系统设置中允许打开该应用。
 
 当前构建配置：
 
-- 应用名：`zjf.ai Desktop`
+- 应用名：`ZJF Desktop`
 - Bundle Identifier：`ai.zjf.desktop`
 - macOS 最低版本：`10.13`
 - Bundle 目标：`app`
