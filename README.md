@@ -13,6 +13,10 @@ ZJF Desktop 是 zjf.ai 图床的桌面客户端。用户配置自己的 zjf.ai A
 - 删除图片前二次确认，删除后同步本地列表。
 - 默认复制格式、自动复制、缩略图缓存等设置项。
 
+## 界面展示
+
+![ZJF Desktop 页面展示](prototype/zjf-desktop-pages.png)
+
 ## 技术栈
 
 - Tauri 2
